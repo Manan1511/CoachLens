@@ -1,8 +1,29 @@
+# Environment and local secrets
 .env
+.env.*
+!.env.example
 services/*/.env
+
+# Node / Vite
+node_modules/
+dist/
+.vite/
+coverage/
+*.tsbuildinfo
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
 .venv/
 venv/
+env/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 *.egg-info/
+
+# Local tooling and operating-system files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
