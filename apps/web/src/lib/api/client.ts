@@ -7,6 +7,7 @@ import type {
   CoachActionResult,
   CoachActionType,
   CoachingReport,
+  DeliveryIngestionRequest,
   DeliverySummary,
   DeliveryStatus,
   SessionStartResult,
@@ -131,6 +132,19 @@ export const api = {
    *  call (src/coaching/routes/athletes.py) — no request body needed. */
   startSession: (athleteId: string): Promise<SessionStartResult> =>
     apiFetch<SessionStartResult>(`/api/v1/athletes/${athleteId}/sessions`, { method: 'POST' }),
+
+  /** Synchronous, not fire-and-forget - src/coaching/routes/deliveries.py's
+   *  ingest_delivery returns the real CoachingReport directly, so the
+   *  capture screen has a verdict the moment this resolves, no polling
+   *  needed. Can throw ApiError with status 422 (ThermalThrottleError -
+   *  too many deliveries too fast, PRD's thermal-throttle guard) or 403
+   *  (ConsentRequiredError - consent revoked between session-pool
+   *  selection and this POST). */
+  submitDelivery: (payload: DeliveryIngestionRequest): Promise<CoachingReport> =>
+    apiFetch<CoachingReport>('/api/v1/sessions/delivery', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 
   getAthleteHistory: (athleteId: string): Promise<SessionSummary[]> =>
     fetchAthleteHistory(athleteId),

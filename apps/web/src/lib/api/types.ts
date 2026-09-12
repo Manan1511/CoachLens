@@ -175,6 +175,43 @@ export interface SessionStartResult {
   created: boolean;
 }
 
+/** CAPTURE_PLAN.md Milestone 3: the request side of POST
+ *  /api/v1/sessions/delivery, matching services/coaching-api's
+ *  src/schemas/delivery.py field-for-field (read directly, not inferred
+ *  from the PRD's example payload, which omits `wrist` — see
+ *  extractKeypointFrame.ts's own note on that). */
+export interface Landmark {
+  x: number;
+  y: number;
+  conf: number;
+}
+
+export interface KeypointFrame {
+  frame: number;
+  t_ms: number;
+  knee: Landmark;
+  hip: Landmark;
+  ankle: Landmark;
+  shoulder?: Landmark;
+  wrist?: Landmark;
+}
+
+export interface CaptureMetadata {
+  fps: number;
+  pacing_jitter_pct: number;
+  shutter_speed_sec: number | null;
+  distance_meters: number;
+  tripod_height_meters: number;
+  camera_roll_deg: number;
+}
+
+export interface DeliveryIngestionRequest {
+  delivery_id: string;
+  session_id: string;
+  capture_metadata: CaptureMetadata;
+  raw_keypoints: KeypointFrame[];
+}
+
 export const METRICS = ['front_knee_angle_deg', 'forward_trunk_tilt_deg'] as const;
 export type Metric = (typeof METRICS)[number];
 

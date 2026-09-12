@@ -43,7 +43,7 @@ export const FOOTER_CONTACT = {
   title: 'Get in touch',
   lines: [
     'Built for grassroots cricket academies.',
-    'A coaching tool — not a medical device, and not an injury predictor.',
+    'A coaching tool, not a medical device, and not an injury predictor.',
   ],
   email: CONTACT_EMAIL,
 } as const;

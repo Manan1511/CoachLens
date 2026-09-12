@@ -17,7 +17,7 @@ export const VERDICT_COPY: Record<
   MECHANICAL_WATCH: {
     label: 'Worth a look',
     tone: 'yellow',
-    helper: 'A one-off difference — replay only, no action needed yet.',
+    helper: 'A one-off difference: replay only, no action needed yet.',
   },
   TECHNICAL_CONCERN: {
     label: 'Consistent change',

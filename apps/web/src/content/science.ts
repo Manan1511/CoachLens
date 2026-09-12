@@ -13,7 +13,7 @@ export const SCIENCE_CARDS: ScienceCard[] = [
   {
     icon: WaveformIcon,
     title: 'Front knee at landing',
-    desc: "Whether the front leg stays braced as a lever or collapses into the ground at front foot contact. It's one of the clearest markers of how a bowler is transferring effort — and one of the first things to shift when they tire.",
+    desc: "Whether the front leg stays braced as a lever or collapses into the ground at front foot contact. It's one of the clearest markers of how a bowler is transferring effort, and one of the first things to shift when they tire.",
     rows: [
       { label: 'Taken at', value: 'Front foot landing' },
       { label: 'Camera view', value: 'Side-on' },
@@ -43,12 +43,12 @@ export const TRANSPARENCY = {
     },
     {
       heading: 'What it might mean',
-      body: "The front leg isn't bracing the way it normally does for this bowler. Worth a look — your call on whether it's fatigue, surface, or something they're trying.",
+      body: "The front leg isn't bracing the way it normally does for this bowler. Worth a look: your call on whether it's fatigue, surface, or something they're trying.",
     },
   ],
   actions: [
     { label: 'Approve drill', primary: true },
-    { label: 'Dismiss — tactical', primary: false },
+    { label: 'Dismiss (tactical)', primary: false },
     { label: 'Fix the frame', primary: false },
   ],
 } as const;

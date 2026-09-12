@@ -24,7 +24,7 @@ export const ADVANTAGES: Advantage[] = [
   {
     group: 'Measured',
     icon: PhoneIcon,
-    text: 'Footage from a normal phone on a tripod — no markers, no suits, no lab, nothing to install',
+    text: 'Footage from a normal phone on a tripod: no markers, no suits, no lab, nothing to install',
   },
   {
     group: 'Measured',
@@ -44,7 +44,7 @@ export const ADVANTAGES: Advantage[] = [
   {
     group: 'Compared',
     icon: CheckCircleIcon,
-    text: 'One odd ball is noise — we flag a change only when 3 of the last 5 agree',
+    text: 'One odd ball is noise; we flag a change only when 3 of the last 5 agree',
   },
   {
     group: 'Compared',
@@ -64,6 +64,6 @@ export const ADVANTAGES: Advantage[] = [
   {
     group: 'Coach-led',
     icon: LockIcon,
-    text: 'Raw video is deleted once the measurements are taken — summaries share numbers, not clips',
+    text: 'Raw video is deleted once the measurements are taken; summaries share numbers, not clips',
   },
 ];

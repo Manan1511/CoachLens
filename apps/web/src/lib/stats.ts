@@ -42,5 +42,5 @@ export function formatDateTime(iso: string): string {
 }
 
 export function formatDeg(value: number | null, digits = 1): string {
-  return value === null ? '—' : `${value.toFixed(digits)}°`;
+  return value === null ? '-' : `${value.toFixed(digits)}°`;
 }

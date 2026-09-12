@@ -60,7 +60,19 @@ export function useIntro({ overlay, eyebrow, brand }: IntroRefs, shouldPlay: boo
 
     const strokes = overlayEl.querySelectorAll<SVGPathElement>('.intro-angle-stroke');
     strokes.forEach((path) => {
-      const len = path.getTotalLength();
+      // Both dasharray AND dashoffset padded by the same amount, not just
+      // dashoffset (that was the actual bug in the previous attempt at this
+      // fix: padding only one of the two shifts the dash pattern's phase
+      // out of alignment with the path, which is what put a stray visible
+      // sliver at *both* ends instead of neither). getTotalLength() can be
+      // a hair short of what the browser actually rasterizes; a pattern
+      // built from that slightly-too-short length leaves part of the real
+      // stroke uncovered by the "hidden" segment. Padding both values
+      // equally keeps the on/off phase correct while making the hidden
+      // segment comfortably longer than the real path, so no imprecision
+      // in the measurement can leave any part of it visible before the
+      // reveal starts.
+      const len = path.getTotalLength() + 4;
       gsap.set(path, { strokeDasharray: len, strokeDashoffset: len });
     });
 
