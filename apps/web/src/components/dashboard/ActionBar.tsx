@@ -51,7 +51,7 @@ export function ActionBar({
   };
 
   return (
-    <div className="border-t border-line pt-md">
+    <div className="border-t border-line pt-6 pb-8">
       <p className="mb-1 text-small font-medium text-ink">{action.title}</p>
       <p className="mb-sm text-small text-ink-secondary">{action.prescription}</p>
       <p className="mb-sm text-caption text-ink-secondary">{action.credential}</p>

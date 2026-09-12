@@ -27,7 +27,7 @@ export function EvidenceDisclosure({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="border-t border-line py-md">
+    <div className="border-t border-line pt-6 pb-8">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -67,11 +67,11 @@ export function EvidenceDisclosure({
           <Row label="Matches in window" value={String(verdict.window_matches)} />
 
           {verdict.trigger_context_deltas && verdict.trigger_context_deltas.length > 0 && (
-            <div className="col-span-2 pt-2 max-mobile:col-span-1">
-              <p className="mb-2.5 text-ink-secondary">
+            <div className="col-span-2 pt-3 pb-3 max-mobile:col-span-1">
+              <p className="mb-3 text-ink-secondary">
                 Contributing deltas: the rolling window behind "{WINDOW_LABELS[verdict.window_pattern]}"
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2.5 pb-2">
                 {verdict.trigger_context_deltas.map((d, i) => {
                   const band = baselines.uncertainty_band_deg;
                   const withinBand = band !== null ? Math.abs(d) <= band : null;

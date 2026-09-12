@@ -38,7 +38,7 @@ export function WhatsAppExport({ deliveryId }: { deliveryId: string }) {
   };
 
   return (
-    <div className="border-t border-line pt-md">
+    <div className="border-t border-line pt-6 pb-8">
       <button
         type="button"
         onClick={toggle}
