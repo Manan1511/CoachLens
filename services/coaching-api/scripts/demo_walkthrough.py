@@ -34,7 +34,7 @@ from scripts.demo_fixtures import DEMO_DELIVERIES, build_delivery_payload
 from src.db.client import get_supabase
 
 DEFAULT_BASE_URL = "http://localhost:8811"
-DEMO_COACH_EMAIL = os.environ.get("DEMO_COACH_EMAIL", "demo-coach@coachlens.dev")
+DEMO_COACH_EMAIL = os.environ.get("DEMO_COACH_EMAIL", "demo.coachlens@gmail.com")
 DEMO_COACH_PASSWORD = os.environ.get("DEMO_COACH_PASSWORD", "coachlens-demo-only-password-1")
 
 
@@ -48,7 +48,13 @@ def get_demo_coach_token() -> str:
     try:
         result = auth.sign_in_with_password({"email": DEMO_COACH_EMAIL, "password": DEMO_COACH_PASSWORD})
     except AuthApiError:
-        result = auth.sign_up({"email": DEMO_COACH_EMAIL, "password": DEMO_COACH_PASSWORD})
+        try:
+            auth.admin.create_user(
+                {"email": DEMO_COACH_EMAIL, "password": DEMO_COACH_PASSWORD, "email_confirm": True}
+            )
+        except Exception:
+            pass
+        result = auth.sign_in_with_password({"email": DEMO_COACH_EMAIL, "password": DEMO_COACH_PASSWORD})
     if result.session is None:
         raise RuntimeError(
             "Could not obtain a session for the demo coach account - if email "

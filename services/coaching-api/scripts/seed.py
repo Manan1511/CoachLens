@@ -29,6 +29,9 @@ def main() -> None:
         {"id": SESSION_ID, "athlete_id": ATHLETE_ID, "session_date": "2026-09-01"}
     ).execute()
 
+    # Clear previous demo deliveries for this session so re-running seed provides a clean slate
+    db.table("deliveries").delete().eq("session_id", SESSION_ID).execute()
+
     db.table("baselines").upsert(
         {
             "athlete_id": ATHLETE_ID,
