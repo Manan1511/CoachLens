@@ -265,6 +265,54 @@ def test_get_report_returns_none_when_no_verdict(mock_db):
     assert repository.get_report("DEL-MISSING") is None
 
 
+def test_list_athletes_maps_rows_and_flags_consent(mock_db):
+    """A minor without guardian consent must come back consent_blocked=True
+    so a pool selector can grey them out, rather than the app discovering it
+    as a 403 at the moment of recording."""
+    from datetime import date, timedelta
+
+    minor_dob = (date.today() - timedelta(days=15 * 365 + 10)).isoformat()
+    adult_dob = (date.today() - timedelta(days=25 * 365 + 10)).isoformat()
+    _execute_returns(
+        mock_db.table.return_value.select.return_value.order.return_value,
+        [
+            {"id": "ATH-1", "name": "Adult", "dob": adult_dob, "guardian_consent": False, "bowling_arm": "RIGHT"},
+            {"id": "ATH-2", "name": "Minor", "dob": minor_dob, "guardian_consent": False, "bowling_arm": "LEFT"},
+            {"id": "ATH-3", "name": "Consented Minor", "dob": minor_dob, "guardian_consent": True, "bowling_arm": "RIGHT"},
+            {"id": "ATH-4", "name": "Legacy", "dob": None, "guardian_consent": False, "bowling_arm": None},
+        ],
+    )
+
+    roster = repository.list_athletes()
+
+    assert [a.consent_blocked for a in roster] == [False, True, False, False]
+    assert roster[3].bowling_arm is None  # legacy row, no arm recorded
+    assert roster[1].bowling_arm == "LEFT"
+
+
+def test_create_athlete_inserts_generated_id_and_returns_summary(mock_db):
+    from datetime import date
+
+    def insert_side_effect(row):
+        m = MagicMock()
+        _execute_returns(m, [row])
+        return m
+
+    mock_db.table.return_value.insert.side_effect = insert_side_effect
+
+    created = repository.create_athlete(
+        name="New Bowler", bowling_arm="LEFT", dob=date(2000, 5, 1), guardian_consent=False
+    )
+
+    inserted = mock_db.table.return_value.insert.call_args[0][0]
+    assert inserted["name"] == "New Bowler"
+    assert inserted["bowling_arm"] == "LEFT"
+    assert inserted["dob"] == "2000-05-01"
+    assert inserted["id"]  # server-generated
+    assert created.id == inserted["id"]
+    assert created.consent_blocked is False
+
+
 def test_get_athlete_id_for_session_returns_athlete(mock_db):
     _execute_returns(mock_db.table.return_value.select.return_value.eq.return_value.limit.return_value, [{"athlete_id": "ATH-1"}])
     assert repository.get_athlete_id_for_session("SES-1") == "ATH-1"

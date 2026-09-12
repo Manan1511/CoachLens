@@ -5,9 +5,10 @@ src/coaching/repository.py.
 """
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 from src.coaching import repository
+from src.coaching.consent import MINOR_AGE_CUTOFF, is_consent_blocked
 from src.interpretation.angles import forward_trunk_tilt_deg, front_knee_angle_deg
 from src.interpretation.baseline import evaluate_delivery_deviation
 from src.measurement.audit import audit_frame_pacing
@@ -43,31 +44,19 @@ class ConsentRequiredError(Exception):
     consent (PRD §10 Adolescent Consent Gate)."""
 
 
-MINOR_AGE_CUTOFF = 18
-
-
 def _check_consent(athlete_id: str) -> None:
     """PRD §10: "Digital Parental Consent Gate: Adolescent fast bowlers
     (< 18 years) require verifiable digital guardian acknowledgment before
     profile activation." Called before any measurement/persistence work.
 
-    If the athlete's date of birth isn't on file, this cannot determine
-    minor status and does NOT block - that's a real gap (an athlete with no
-    recorded dob bypasses the gate entirely), not a silent guarantee of
-    enforcement. Treat "dob missing" as a data-completeness problem to fix
-    at registration time, not something this function can safely default to
-    blocking, since that would also lock out adults who simply never had a
-    dob recorded (e.g. existing pre-Milestone-7 seed/demo data).
+    The blocked/not-blocked decision itself lives in `consent.py` so this
+    path and the athlete roster agree by construction — including its
+    documented limitation that a missing dob does not block.
     """
     info = repository.get_athlete_consent_info(athlete_id)
     if info is None:
         raise repository.NotFoundError(f"No athlete found for athlete_id={athlete_id!r}")
-    if info.dob is None:
-        return
-
-    today = date.today()
-    age_years = today.year - info.dob.year - ((today.month, today.day) < (info.dob.month, info.dob.day))
-    if age_years < MINOR_AGE_CUTOFF and not info.guardian_consent:
+    if is_consent_blocked(info.dob, info.guardian_consent):
         raise ConsentRequiredError(
             f"Athlete {athlete_id!r} is under {MINOR_AGE_CUTOFF} with no recorded guardian consent; "
             f"cannot process deliveries until consent is confirmed."

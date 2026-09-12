@@ -3,9 +3,33 @@ from fastapi import APIRouter, Depends, HTTPException
 from src.coaching import repository
 from src.coaching.auth import Coach, require_coach
 from src.coaching.schemas.action import BaselineConfirmRequest
+from src.schemas.athlete import AthleteCreateRequest, AthleteSummary
 from src.schemas.session import SessionResponse
 
 router = APIRouter(prefix="/api/v1/athletes", tags=["athletes"])
+
+
+@router.get("", response_model=list[AthleteSummary])
+def list_athletes(coach: Coach = Depends(require_coach)) -> list[AthleteSummary]:
+    """The roster the capture app draws its session pool from. Returns every
+    athlete — `athletes` has no per-coach ownership column yet (see
+    repository.list_athletes)."""
+    return repository.list_athletes()
+
+
+@router.post("", response_model=AthleteSummary, status_code=201)
+def create_athlete(payload: AthleteCreateRequest, coach: Coach = Depends(require_coach)) -> AthleteSummary:
+    """Player registration, consumed by the coach dashboard — not by the
+    capture app, which only ever reads the roster (MOBILE_PLAN.md §2).
+    `bowling_arm` is required here precisely so the capture app never has to
+    guess which leg is the front leg.
+    """
+    return repository.create_athlete(
+        name=payload.name,
+        bowling_arm=payload.bowling_arm.value,
+        dob=payload.dob,
+        guardian_consent=payload.guardian_consent,
+    )
 
 
 @router.post("/{athlete_id}/sessions", response_model=SessionResponse)

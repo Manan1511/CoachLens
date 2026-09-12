@@ -8,7 +8,9 @@ import uuid
 from dataclasses import dataclass
 from datetime import date, datetime
 
+from src.coaching.consent import is_consent_blocked
 from src.db.client import get_supabase
+from src.schemas.athlete import AthleteSummary
 from src.schemas.delivery import CaptureMetadata, DeliveryIngestionRequest, KeypointFrame
 from src.schemas.report import Baselines, CoachingReport, Kinematics, ProposedAction, Verdict
 from src.schemas.status import DeliveryStatus, WindowPattern
@@ -49,6 +51,49 @@ def get_athlete_consent_info(athlete_id: str) -> AthleteConsentInfo | None:
 
 class NotFoundError(Exception):
     """Raised when a referenced row (athlete, baseline, delivery) doesn't exist."""
+
+
+def _athlete_summary(row: dict) -> AthleteSummary:
+    dob = date.fromisoformat(row["dob"]) if row.get("dob") else None
+    guardian_consent = row["guardian_consent"]
+    return AthleteSummary(
+        id=row["id"],
+        name=row["name"],
+        bowling_arm=row.get("bowling_arm"),
+        guardian_consent=guardian_consent,
+        consent_blocked=is_consent_blocked(dob, guardian_consent),
+    )
+
+
+def list_athletes() -> list[AthleteSummary]:
+    """The full athlete roster, name-ordered, for session-pool selection.
+
+    Not scoped to the requesting coach: `athletes` has no coach or club
+    column, so every coach sees every athlete. That's a real multi-tenancy
+    gap (see BACKEND_PLAN.md Milestone 9) rather than an intentional design —
+    it needs an ownership column and a filter here before this API serves
+    more than one club.
+    """
+    db = get_supabase()
+    result = db.table("athletes").select("id, name, dob, guardian_consent, bowling_arm").order("name").execute()
+    return [_athlete_summary(row) for row in result.data]
+
+
+def create_athlete(name: str, bowling_arm: str, dob: date | None, guardian_consent: bool) -> AthleteSummary:
+    """Ids are generated server-side. Existing demo rows use readable ids
+    ("ATH-DEMO-01") seeded by hand; anything created through the API gets a
+    uuid, same as get_or_create_session.
+    """
+    db = get_supabase()
+    row = {
+        "id": str(uuid.uuid4()),
+        "name": name,
+        "bowling_arm": bowling_arm,
+        "dob": dob.isoformat() if dob else None,
+        "guardian_consent": guardian_consent,
+    }
+    result = db.table("athletes").insert(row).execute()
+    return _athlete_summary(result.data[0])
 
 
 def get_baseline(athlete_id: str, metric: str) -> BaselineRecord | None:

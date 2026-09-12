@@ -142,9 +142,12 @@ The riskiest assumption in the whole plan, proven or disproven before UI work is
 
 The app's flow now rests on work owned elsewhere. Listing it plainly because this is the kind of cross-workstream chain that sinks a demo quietly.
 
-**Backend:**
-- **`GET /api/v1/athletes`** — the roster, for session-pool selection. Does not exist. Must return `bowling_arm` and enough to render a name.
-- **`bowling_arm` on `athletes`** — new column + migration, populated at player creation. Needed for front-leg selection and tripod-side guidance (§7).
+**Backend — done** (`BACKEND_PLAN.md` Milestone 9):
+- [x] **`GET /api/v1/athletes`** — name-ordered roster for pool selection, returning `bowling_arm` and `consent_blocked` (so the selector can show an unconsented minor as unavailable rather than failing at record time). Omits `dob` by design — this list is read on a shared net-side phone.
+- [x] **`POST /api/v1/athletes`** — registration for the dashboard, `bowling_arm` required.
+- [x] **`bowling_arm` on `athletes`** — migration applied. Nullable only for legacy rows; a client must treat null as a setup error, never guess a side.
+- [x] Mid-session join needs nothing new — `POST /athletes/{id}/sessions` is get-or-create, so adding a late arrival to the pool works at any point.
+- Note: the roster is **not** scoped per coach (no ownership column on `athletes`), so every coach sees every athlete. Fine for one club; flagged in Milestone 9.
 
 **Dashboard — and this is the sharp edge:** players are created in the dashboard, with `bowling_arm`, `dob` and `guardian_consent`. **The dashboard does not exist.** `apps/web/src/routes/DashboardPlaceholder.tsx` renders "Not built yet" and explicitly "talks to no API"; `FRONTEND_PLAN.md`'s Milestone 7 ("Dashboard starts as its own app") is unstarted. So today there is *no* way to create a player the mobile app can use, and `dob`/`guardian_consent` matter directly: the consent gate 403s minors without consent on file, and the app has no screen to resolve that.
 
