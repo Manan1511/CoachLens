@@ -6,14 +6,58 @@ AI-assisted quantitative 2D biomechanical review assistant for fast bowling stri
 
 ## Live Deployment (Backend API)
 
-The backend is deployed and live on Render:
+The backend is deployed, fully persistent (Supabase Postgres), and live on Render:
 - **Base API URL:** `https://coachlens-xvh3.onrender.com`
 - **Interactive Swagger Docs:** [https://coachlens-xvh3.onrender.com/docs](https://coachlens-xvh3.onrender.com/docs)
 - **Health Check:** [https://coachlens-xvh3.onrender.com/health](https://coachlens-xvh3.onrender.com/health) (`{"status": "ok"}`)
 - **OpenAPI Schema:** [https://coachlens-xvh3.onrender.com/openapi.json](https://coachlens-xvh3.onrender.com/openapi.json)
 
+### Core Endpoints
 
-## Architecture at a glance
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/v1/sessions/delivery` | Ingest keypoints, run Butterworth filter, detect FFS/release, persist & score |
+| `GET` | `/api/v1/reports/{delivery_id}` | Reconstruct coaching card report from stored verdict kinematics |
+| `GET` | `/api/v1/reports/{delivery_id}/export/whatsapp` | Export WhatsApp-ready formatted coaching text card (PRD §10.3) |
+| `POST` | `/api/v1/deliveries/{delivery_id}/nudge-ffs?frame_delta=1` | Coach manual adjustment of FFS plant frame (+/-1 frame) |
+| `POST` | `/api/v1/deliveries/{delivery_id}/action` | Coach approval/dismissal audit trail with coach attribution |
+| `POST` | `/api/v1/athletes/{athlete_id}/baseline` | Confirm fixed reference baseline (median ± IQR) |
+| `GET` | `/api/v1/athletes/{athlete_id}/history` | Nested athlete history (`sessions` → `deliveries` → `verdicts`) |
+| `GET` | `/health` | Unauthenticated container liveness probe |
+
+---
+
+## Interactive Testing & Verification
+
+All backend code lives in `services/coaching-api/`.
+
+### 1. Live Webcam MediaPipe Tracker
+Test real-time bowler tracking with your camera:
+```bash
+cd services/coaching-api
+PYTHONPATH=. .venv/Scripts/python scripts/live_webcam_tracker.py
+```
+* **Controls:** Press `[SPACE]` to record a delivery stride and evaluate against the live API; press `[q]` to quit.
+* **HUD:** Displays live knee angle, trunk tilt, quality firewall status, and returned coach verdicts.
+
+### 2. Automated 5-Delivery Demo Walkthrough
+Executes the validated hackathon narrative (`FORM_BENCHMARK` → `MECHANICAL_WATCH` → `MECHANICAL_WATCH` → `TECHNICAL_CONCERN` → `DATA_SUPPRESSED`) and measures P50/P95 latency against the PRD §9 SLA:
+```bash
+cd services/coaching-api
+# Run against live Render deployment:
+PYTHONPATH=. .venv/Scripts/python scripts/demo_walkthrough.py https://coachlens-xvh3.onrender.com
+
+# Or against local uvicorn:
+PYTHONPATH=. .venv/Scripts/python scripts/demo_walkthrough.py
+```
+
+### 3. Run Test Suite
+```bash
+cd services/coaching-api
+.venv/Scripts/python -m pytest
+```
+*84 unit, contract, and integration tests passing.*
+
 
 The system is a decoupled tri-layer pipeline (PRD §4):
 
