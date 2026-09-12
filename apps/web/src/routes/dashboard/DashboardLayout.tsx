@@ -1,6 +1,6 @@
 import { Navigate, NavLink, Outlet } from 'react-router';
 import { LogoMark } from '@/components/icons';
-import { useCoach } from '@/lib/auth/mock-auth';
+import { useCoach } from '@/lib/auth/coach-auth';
 
 /** The dashboard shell: a floating top nav (not a sidebar) and a full-width
  *  content outlet. Deliberately not the marketing page's visual language —
@@ -9,8 +9,13 @@ import { useCoach } from '@/lib/auth/mock-auth';
  *  reads lighter than a docked toolbar. No Lenis, no GSAP, no scroll
  *  choreography; native scroll, instant interaction. */
 export function DashboardLayout() {
-  const { coach, signOut } = useCoach();
+  const { coach, loading, signOut } = useCoach();
 
+  // Wait for the initial Supabase session restore before deciding whether
+  // to redirect — without this gate, every hard reload of a signed-in
+  // session would render with coach=null for one tick and bounce to
+  // /app/login before getSession() had a chance to answer.
+  if (loading) return null;
   if (!coach) return <Navigate to="/app/login" replace />;
 
   return (
@@ -42,7 +47,7 @@ export function DashboardLayout() {
 
           <div className="flex shrink-0 items-center gap-3">
             <span className="hidden truncate text-small text-ink-secondary sm:inline">
-              {coach.name}
+              {coach.email}
             </span>
             <button
               type="button"

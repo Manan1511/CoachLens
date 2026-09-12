@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { api } from '@/lib/api/client';
-import { useCoach } from '@/lib/auth/mock-auth';
+import { useCoach } from '@/lib/auth/coach-auth';
 import type { BaselineRecord } from '@/lib/api/types';
 import { formatDeg, medianAndIqr } from '@/lib/stats';
 

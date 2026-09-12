@@ -76,7 +76,7 @@ export function AthleteDetailPage() {
             Guardian consent needed
           </Badge>
         )}
-        <AthleteMeta gender={athlete.gender} bowling_arm={athlete.bowling_arm} />
+        <AthleteMeta bowling_arm={athlete.bowling_arm} />
 
         {quality.totalDeliveries > 0 && (
           <p className="mt-md border-t border-line pt-md text-caption text-ink-dim">

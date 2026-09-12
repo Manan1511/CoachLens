@@ -115,11 +115,6 @@ export interface Athlete {
   bowling_arm: BowlingArm | null;
   guardian_consent: boolean;
   consent_blocked: boolean;
-  /** NOT a real column (services/coaching-api's athletes table has no
-   *  gender field, and the latest migration only added bowling_arm) —
-   *  mock-only, kept for the demographic-context display until a teammate
-   *  decides whether this belongs in the schema at all. */
-  gender: 'male' | 'female' | 'other';
 }
 
 export interface DeliverySummary {

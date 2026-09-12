@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { Route, Routes, useLocation } from 'react-router';
 import { IntroOverlay } from '@/components/layout/IntroOverlay';
 import { AnimationReadyProvider } from '@/lib/animation-context';
-import { CoachAuthProvider } from '@/lib/auth/mock-auth';
+import { CoachAuthProvider } from '@/lib/auth/coach-auth';
 import { useIntro } from '@/hooks/useIntro';
 import { useSmoothScroll } from '@/hooks/useSmoothScroll';
 import { AthleteDetailPage } from '@/routes/dashboard/AthleteDetailPage';

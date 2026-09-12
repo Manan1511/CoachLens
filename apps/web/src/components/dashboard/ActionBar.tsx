@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '@/lib/api/client';
-import { useCoach } from '@/lib/auth/mock-auth';
+import { useCoach } from '@/lib/auth/coach-auth';
 import type { CoachActionType, ProposedAction } from '@/lib/api/types';
 
 const QUICK_DISMISS_REASONS = ['Tactical variation', 'Slower ball', 'Yorker'];
