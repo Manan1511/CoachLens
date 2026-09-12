@@ -102,7 +102,14 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas px-[var(--container-padding)]">
+    // items-center still centers a card that fits; overflow-y-auto means a
+    // card taller than the viewport (sign-up's extra field) scrolls into
+    // view instead of clipping. py-sm (not the design system's 2xl, which
+    // is 9rem/144px - a marketing-section token, not a form-page one) is
+    // just enough that a scrolled card never sits flush against the edge,
+    // without pushing a short sign-in card down far enough to need
+    // scrolling itself, which defeats the point.
+    <div className="flex min-h-screen items-center justify-center overflow-y-auto bg-canvas px-[var(--container-padding)] py-sm">
       <div className="w-full max-w-[24rem]">
         <Link
           to="/"
@@ -115,7 +122,10 @@ export function LoginPage() {
           onSubmit={handleSubmit}
           className="rounded-lg border border-line bg-surface p-lg"
         >
-        <div className="mb-lg flex items-center gap-2.5">
+        {/* mb-md, not lg - lg left sign-up's extra field short of fitting a
+            typical laptop window without scroll (verified: needed ~740px on
+            a 700px-tall viewport before this pass). */}
+        <div className="mb-md flex items-center gap-2.5">
           <LogoMark className="size-6 shrink-0 text-ink" />
           <Wordmark className="font-heading text-h4 font-semibold tracking-[-0.02em] text-ink" />
         </div>
@@ -124,7 +134,7 @@ export function LoginPage() {
           <button
             type="button"
             onClick={() => switchMode('sign-in')}
-            className={`flex-1 rounded-full py-1.5 text-caption font-semibold uppercase tracking-[0.08em] transition-colors ${
+            className={`flex-1 rounded-full py-1.5 text-caption font-semibold uppercase tracking-[0.08em] transition-colors duration-200 ${
               mode === 'sign-in' ? 'bg-white/8 text-ink' : 'text-ink-secondary hover:text-ink'
             }`}
           >
@@ -133,7 +143,7 @@ export function LoginPage() {
           <button
             type="button"
             onClick={() => switchMode('sign-up')}
-            className={`flex-1 rounded-full py-1.5 text-caption font-semibold uppercase tracking-[0.08em] transition-colors ${
+            className={`flex-1 rounded-full py-1.5 text-caption font-semibold uppercase tracking-[0.08em] transition-colors duration-200 ${
               mode === 'sign-up' ? 'bg-white/8 text-ink' : 'text-ink-secondary hover:text-ink'
             }`}
           >
@@ -167,20 +177,35 @@ export function LoginPage() {
           />
         </label>
 
-        {mode === 'sign-up' && (
-          <label className="mb-lg block">
-            <span className="mb-1 block text-small text-ink-secondary">Confirm password</span>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={6}
-              autoComplete="new-password"
-              className="w-full rounded-md border border-line bg-canvas px-3 py-2 text-body text-ink outline-none focus-visible:border-line-strong"
-            />
-          </label>
-        )}
+        {/* grid-rows 0fr/1fr is the CSS trick for animating to/from "auto"
+            height, which a plain height/max-height transition can't do
+            without guessing a pixel value. Confirm-password mounting only in
+            sign-up mode used to make the whole card snap taller instantly;
+            this grows it open instead. The inner div needs its own
+            min-h-0/overflow-hidden or the grid row won't actually collapse -
+            a flex or block child clamps to content size regardless of the
+            row track. */}
+        <div
+          className={`grid transition-[grid-template-rows] duration-200 ease-out ${
+            mode === 'sign-up' ? 'mb-md grid-rows-[1fr]' : 'grid-rows-[0fr]'
+          }`}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <label className="block pt-sm">
+              <span className="mb-1 block text-small text-ink-secondary">Confirm password</span>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required={mode === 'sign-up'}
+                minLength={6}
+                autoComplete="new-password"
+                tabIndex={mode === 'sign-up' ? 0 : -1}
+                className="w-full rounded-md border border-line bg-canvas px-3 py-2 text-body text-ink outline-none focus-visible:border-line-strong"
+              />
+            </label>
+          </div>
+        </div>
 
         {error && <p className="mb-sm text-small text-status-red">{error}</p>}
 
