@@ -1,8 +1,29 @@
+# Secrets / environment
 .env
+.env.*
+!.env.example
 services/*/.env
+services/*/.env.*
+!services/*/.env.example
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
 .venv/
 venv/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 *.egg-info/
+.coverage
+htmlcov/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs
+*.log
