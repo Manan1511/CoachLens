@@ -2,12 +2,16 @@ from fastapi import FastAPI
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import HTMLResponse
 
+from src.coaching.routes.actions import router as actions_router
+from src.coaching.routes.athletes import router as athletes_router
 from src.coaching.routes.deliveries import router as deliveries_router
 
 # docs_url=None disables the default (light-only) /docs so we can serve a
 # dark-themed Swagger UI at the same path instead.
 app = FastAPI(title="CoachLens Coaching API", docs_url=None)
 app.include_router(deliveries_router)
+app.include_router(actions_router)
+app.include_router(athletes_router)
 
 _DARK_THEME_LINK = (
     '<link rel="stylesheet" type="text/css" '

@@ -54,20 +54,22 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blo
 - [x] 3-of-5 rolling window classifier → `FORM_BENCHMARK` / `MECHANICAL_WATCH` / `TECHNICAL_CONCERN`, ported from PRD §6.2's reference pseudocode with the canonical status names
 - [x] Unit tests for every status transition (`tests/test_interpretation.py`, 25 total incl. measurement) — including one against the PRD §7.2 example's exact numbers, and one that caught a wrong assumption in my own test (current delivery always matches itself in the rolling window, so the floor is 1 match not 0 — fixed the test, not the implementation, since the implementation was right)
 
-## Interim: demo pipeline wiring (ahead of Milestone 5)
-- [x] `src/coaching/pipeline.py::evaluate_delivery` orchestrates measurement → interpretation for the knee-angle metric only (trunk-tilt wiring deferred to Milestone 5 proper), using an **in-memory** `DEMO_BASELINES`/`DEMO_ROLLING_HISTORY` store instead of Supabase — explicitly temporary, called out in the module docstring, not the final design. Resets on every server restart.
-- [x] Wired into `POST /api/v1/sessions/delivery` / `GET /api/v1/reports/{delivery_id}` with proper error mapping (`ThermalThrottleError` → 422 `ERR_THERMAL_THROTTLE`, unknown athlete baseline → 422 `ERR_UNKNOWN_BASELINE`)
-- [x] Route-level tests (`tests/test_delivery_route.py`) hit the real HTTP layer via `TestClient`, not just unit-level functions
-- [x] Verified live via Swagger UI at `/docs` (server launched through `.claude/launch.json` + Browser preview) — POST returned a real 200 with computed `ffs_frame`, `front_knee_angle_deg`, and a `MECHANICAL_WATCH` verdict, round-tripped through GET
-- [x] Swagger UI switched to a dark theme (`/docs` now serves `swagger-ui.css` + an appended `theme-dark.css` overlay, since the theme CSS alone breaks layout without the base stylesheet)
+## Interim: demo pipeline wiring (superseded by Milestone 5)
+- [x] Ahead of this milestone, `pipeline.py` briefly used an in-memory `DEMO_BASELINES`/`DEMO_ROLLING_HISTORY` store so the API could be demoed via Swagger before real persistence existed. That in-memory version is **gone** — replaced entirely by the Supabase-backed version below. Kept this line for history; nothing here still applies to the current code.
+- [x] Swagger UI switched to a dark theme (`/docs` now serves `swagger-ui.css` + an appended `theme-dark.css` overlay, since the theme CSS alone breaks layout without the base stylesheet) — this part is still current.
 
 ## Milestone 5 — Coaching layer / API routes
-- [ ] `POST /api/v1/sessions/delivery` — ingest, run full pipeline, persist verdict
-- [ ] `GET /api/v1/reports/{delivery_id}` — return coaching card
-- [ ] `POST /api/v1/deliveries/{id}/action` — Approve / Dismiss / Nudge FFS (nudge re-runs pipeline from stored keypoints at new frame index)
-- [ ] `POST /api/v1/athletes/{id}/baseline` — confirm fixed reference baseline
-- [ ] Drill lookup + contraindication filter (static seeded drill table, no LLM)
-- [ ] `GET /api/v1/athletes/{id}/history` — session/delivery history
+- [x] `POST /api/v1/sessions/delivery` — ingest, run full pipeline, persist verdict (`src/coaching/pipeline.py::evaluate_delivery`, real Supabase reads/writes via `src/coaching/repository.py`)
+- [x] `GET /api/v1/reports/{delivery_id}` — reconstructs the coaching card purely from persisted rows (`repository.get_report`), not by recomputing from raw keypoints
+- [x] `POST /api/v1/deliveries/{id}/nudge-ffs` — re-runs the pipeline from stored keypoints at `auto_detected_frame + frame_delta` (split out from the combined Approve/Dismiss/Nudge action in the original plan bullet, since nudge re-evaluates while the other two just record a decision)
+- [x] `POST /api/v1/deliveries/{id}/action` — Approve / Dismiss, recorded against the delivery's latest verdict as an audit-trail append
+- [x] `POST /api/v1/athletes/{id}/baseline` — confirm fixed reference baseline (median + IQR)
+- [x] Drill lookup (`repository.get_drill`) — one seeded drill assigned on `TECHNICAL_CONCERN`; contraindication *filtering* against athlete medical data is not modeled (no athlete medical data exists in the schema) — contraindications are returned as informational text only, per PRD §7.2's example
+- [x] `GET /api/v1/athletes/{id}/history` — sessions → deliveries → verdicts, nested via PostgREST embedding
+- [x] Schema changes discovered while building this milestone: `verdicts` needed `metric`, `event_frame`, `observed_value_deg`, `confidence` columns — none existed after Milestone 2, because nothing before this milestone needed to *reconstruct* a report from stored data alone. All three migrations applied and pulled into `supabase/migrations/`.
+- [x] Avoided PostgREST's filter-on-embedded-resource syntax (e.g. `deliveries.sessions.athlete_id`) in `get_rolling_history_deltas` — it's real syntax, but with RLS default-deny there's no way to verify it against the live API without the service_role key, so used three plain queries (sessions → deliveries → verdicts) instead, each using only basic, well-established operations
+- [x] 51 tests total (up from 25) — repository tests mock `get_supabase()`'s fluent chain with `unittest.mock.MagicMock`; pipeline tests monkeypatch the `repository` module boundary directly; route tests monkeypatch pipeline/repository as bound into each route module's namespace. Ran a mutation check on the rolling-history reversal logic (real bug caught, then reverted after confirming the test failed correctly).
+- [x] Verified the 3 new `verdicts` columns end-to-end with a real insert against the live schema via direct SQL (not just "migration applied successfully")
 
 ## Milestone 6 — Demo readiness
 - [ ] End-to-end run through seed data reproduces: `FORM_BENCHMARK` → isolated `MECHANICAL_WATCH` → `TECHNICAL_CONCERN` (3-of-5) → `DATA_SUPPRESSED` (occlusion)
