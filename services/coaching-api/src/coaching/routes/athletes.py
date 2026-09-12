@@ -1,10 +1,25 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from src.coaching import repository
 from src.coaching.auth import Coach, require_coach
 from src.coaching.schemas.action import BaselineConfirmRequest
+from src.schemas.session import SessionResponse
 
 router = APIRouter(prefix="/api/v1/athletes", tags=["athletes"])
+
+
+@router.post("/{athlete_id}/sessions", response_model=SessionResponse)
+def start_or_resume_session(athlete_id: str, coach: Coach = Depends(require_coach)) -> SessionResponse:
+    """Get-or-create today's session for this athlete (PRD nets workflow:
+    one coach/one phone, multiple bowlers taking turns - the mobile app
+    calls this on every "which bowler is up" switch, and gets back the same
+    session_id all day for a player it's already recorded).
+    """
+    try:
+        session_id, session_date, created = repository.get_or_create_session(athlete_id)
+    except repository.NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return SessionResponse(session_id=session_id, athlete_id=athlete_id, session_date=session_date, created=created)
 
 
 @router.post("/{athlete_id}/baseline")

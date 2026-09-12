@@ -263,3 +263,73 @@ def test_get_report_reconstructs_full_report(mock_db):
 def test_get_report_returns_none_when_no_verdict(mock_db):
     _execute_returns(mock_db.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value, [])
     assert repository.get_report("DEL-MISSING") is None
+
+
+def test_get_athlete_id_for_session_returns_athlete(mock_db):
+    _execute_returns(mock_db.table.return_value.select.return_value.eq.return_value.limit.return_value, [{"athlete_id": "ATH-1"}])
+    assert repository.get_athlete_id_for_session("SES-1") == "ATH-1"
+
+
+def test_get_athlete_id_for_session_raises_not_found(mock_db):
+    _execute_returns(mock_db.table.return_value.select.return_value.eq.return_value.limit.return_value, [])
+    with pytest.raises(repository.NotFoundError):
+        repository.get_athlete_id_for_session("SES-MISSING")
+
+
+def test_get_or_create_session_raises_not_found_for_unknown_athlete(mock_db):
+    _execute_returns(mock_db.table.return_value.select.return_value.eq.return_value.limit.return_value, [])
+    with pytest.raises(repository.NotFoundError):
+        repository.get_or_create_session("ATH-MISSING")
+
+
+def test_get_or_create_session_reuses_existing_session_for_same_day(mock_db):
+    """Regression test: a coach quick-switching back to a bowler already
+    recorded today must get the same session_id back, not a duplicate."""
+    from datetime import date
+
+    sessions_mock = MagicMock()
+    _execute_returns(
+        sessions_mock.select.return_value.eq.return_value.eq.return_value.limit.return_value,
+        [{"id": "SES-EXISTING"}],
+    )
+
+    def table_side_effect(name):
+        if name == "athletes":
+            m = MagicMock()
+            _execute_returns(m.select.return_value.eq.return_value.limit.return_value, [{"id": "ATH-1"}])
+            return m
+        elif name == "sessions":
+            return sessions_mock
+        raise AssertionError(f"unexpected table {name!r}")
+
+    mock_db.table.side_effect = table_side_effect
+    session_id, session_date, created = repository.get_or_create_session("ATH-1", session_date=date(2026, 9, 12))
+    assert session_id == "SES-EXISTING"
+    assert session_date == date(2026, 9, 12)
+    assert created is False
+    sessions_mock.insert.assert_not_called()
+
+
+def test_get_or_create_session_creates_new_session_when_none_exists_today(mock_db):
+    from datetime import date
+
+    sessions_mock = MagicMock()
+    _execute_returns(sessions_mock.select.return_value.eq.return_value.eq.return_value.limit.return_value, [])
+
+    def table_side_effect(name):
+        if name == "athletes":
+            m = MagicMock()
+            _execute_returns(m.select.return_value.eq.return_value.limit.return_value, [{"id": "ATH-1"}])
+            return m
+        elif name == "sessions":
+            return sessions_mock
+        raise AssertionError(f"unexpected table {name!r}")
+
+    mock_db.table.side_effect = table_side_effect
+    session_id, session_date, created = repository.get_or_create_session("ATH-1", session_date=date(2026, 9, 12))
+    assert created is True
+    assert session_date == date(2026, 9, 12)
+    inserted = sessions_mock.insert.call_args[0][0]
+    assert inserted["id"] == session_id
+    assert inserted["athlete_id"] == "ATH-1"
+    assert inserted["session_date"] == "2026-09-12"

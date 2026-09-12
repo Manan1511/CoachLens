@@ -4,6 +4,7 @@ functions (not a class) so each can be mocked independently in tests via
 Postgres or real network access.
 """
 
+import uuid
 from dataclasses import dataclass
 from datetime import date, datetime
 
@@ -260,6 +261,53 @@ def save_coach_action(
             "coach_id": coach_id,
         }
     ).execute()
+
+
+def get_athlete_id_for_session(session_id: str) -> str:
+    """The one source of truth for "which athlete does this delivery belong
+    to" at ingestion time - see the docstring on
+    DeliveryIngestionRequest.session_id for why this isn't taken from the
+    request body instead."""
+    db = get_supabase()
+    result = db.table("sessions").select("athlete_id").eq("id", session_id).limit(1).execute()
+    if not result.data:
+        raise NotFoundError(f"No session found for session_id={session_id!r}")
+    return result.data[0]["athlete_id"]
+
+
+def get_or_create_session(athlete_id: str, session_date: date | None = None) -> tuple[str, date, bool]:
+    """Returns (session_id, session_date, created) for the athlete's session
+    on the given date (default: today). Reuses an existing session for the
+    same athlete+date rather than creating a duplicate - lets a mobile app
+    quick-switch back and forth between bowlers in one nets outing and keep
+    posting into the same session for each, instead of inventing a new
+    session_id itself.
+
+    Athlete existence is checked explicitly first so a bad athlete_id
+    surfaces as NotFoundError rather than a raw FK-violation from the
+    sessions insert.
+    """
+    db = get_supabase()
+    if not db.table("athletes").select("id").eq("id", athlete_id).limit(1).execute().data:
+        raise NotFoundError(f"No athlete found for athlete_id={athlete_id!r}")
+
+    target_date = session_date or date.today()
+    existing = (
+        db.table("sessions")
+        .select("id")
+        .eq("athlete_id", athlete_id)
+        .eq("session_date", target_date.isoformat())
+        .limit(1)
+        .execute()
+    )
+    if existing.data:
+        return existing.data[0]["id"], target_date, False
+
+    session_id = str(uuid.uuid4())
+    db.table("sessions").insert(
+        {"id": session_id, "athlete_id": athlete_id, "session_date": target_date.isoformat()}
+    ).execute()
+    return session_id, target_date, True
 
 
 def get_athlete_id_for_delivery(delivery_id: str) -> str:

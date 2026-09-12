@@ -22,7 +22,7 @@ import cv2
 import httpx
 import mediapipe as mp
 
-from scripts.demo_fixtures import ATHLETE_ID, SESSION_ID
+from scripts.demo_fixtures import SESSION_ID
 from scripts.demo_walkthrough import get_demo_coach_token
 
 DEFAULT_API_URL = os.environ.get("COACHLENS_API_URL", "https://coachlens-xvh3.onrender.com")
@@ -222,7 +222,6 @@ def main() -> None:
                 payload = {
                     "delivery_id": delivery_id,
                     "session_id": SESSION_ID,
-                    "athlete_id": ATHLETE_ID,
                     "capture_metadata": {
                         "fps": fps_calc,
                         "video_duration_s": duration_s,

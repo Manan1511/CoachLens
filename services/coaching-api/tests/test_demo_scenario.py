@@ -38,6 +38,12 @@ class FakeRepository:
         self.verdicts_by_delivery = {}
         self.history = {}
 
+    def get_athlete_id_for_session(self, session_id):
+        from scripts.demo_fixtures import ATHLETE_ID, SESSION_ID
+
+        assert session_id == SESSION_ID
+        return ATHLETE_ID
+
     def get_baseline(self, athlete_id, metric):
         return self.baselines.get((athlete_id, metric))
 
@@ -60,7 +66,7 @@ class FakeRepository:
         }
         if delta_deg is not None:
             request = self.deliveries[delivery_id]
-            key = (request.athlete_id, metric)
+            key = (self.get_athlete_id_for_session(request.session_id), metric)
             self.history.setdefault(key, []).append(delta_deg)
         return f"verdict-{delivery_id}"
 
@@ -75,6 +81,7 @@ class FakeRepository:
 
 def test_demo_scenario_produces_expected_status_sequence(monkeypatch):
     fake = FakeRepository()
+    monkeypatch.setattr(repository, "get_athlete_id_for_session", fake.get_athlete_id_for_session)
     monkeypatch.setattr(repository, "get_baseline", fake.get_baseline)
     monkeypatch.setattr(repository, "confirm_baseline", fake.confirm_baseline)
     monkeypatch.setattr(repository, "get_rolling_history_deltas", fake.get_rolling_history_deltas)
@@ -115,6 +122,7 @@ def test_demo_scenario_via_real_http_routes(monkeypatch):
     serialized response, not just in the in-process DemoDelivery objects.
     """
     fake = FakeRepository()
+    monkeypatch.setattr(repository, "get_athlete_id_for_session", fake.get_athlete_id_for_session)
     monkeypatch.setattr(repository, "get_baseline", fake.get_baseline)
     monkeypatch.setattr(repository, "confirm_baseline", fake.confirm_baseline)
     monkeypatch.setattr(repository, "get_rolling_history_deltas", fake.get_rolling_history_deltas)

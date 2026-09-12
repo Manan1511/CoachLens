@@ -23,7 +23,6 @@ def make_payload(delivery_id: str = "DEL-1") -> dict:
     return {
         "delivery_id": delivery_id,
         "session_id": "SES-1",
-        "athlete_id": "ATH-1",
         "capture_metadata": {
             "fps": 120, "pacing_jitter_pct": 2.1, "shutter_speed_sec": 0.001,
             "distance_meters": 3.0, "tripod_height_meters": 1.1, "camera_roll_deg": 1.2,
@@ -150,3 +149,31 @@ def test_get_athlete_history_returns_repository_data(monkeypatch):
     response = client.get("/api/v1/athletes/ATH-1/history")
     assert response.status_code == 200
     assert response.json() == [{"id": "SES-1"}]
+
+
+def test_start_or_resume_session_returns_repository_result(monkeypatch):
+    import datetime
+
+    monkeypatch.setattr(
+        athletes.repository,
+        "get_or_create_session",
+        lambda athlete_id: ("SES-NEW", datetime.date(2026, 9, 12), True),
+    )
+    response = client.post("/api/v1/athletes/ATH-1/sessions")
+    assert response.status_code == 200
+    body = response.json()
+    assert body == {
+        "session_id": "SES-NEW",
+        "athlete_id": "ATH-1",
+        "session_date": "2026-09-12",
+        "created": True,
+    }
+
+
+def test_start_or_resume_session_404_for_unknown_athlete(monkeypatch):
+    def raise_not_found(athlete_id):
+        raise repository.NotFoundError(f"No athlete found for athlete_id={athlete_id!r}")
+
+    monkeypatch.setattr(athletes.repository, "get_or_create_session", raise_not_found)
+    response = client.post("/api/v1/athletes/ATH-MISSING/sessions")
+    assert response.status_code == 404

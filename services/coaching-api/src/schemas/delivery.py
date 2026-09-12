@@ -37,6 +37,12 @@ class KeypointFrame(BaseModel):
 class DeliveryIngestionRequest(BaseModel):
     delivery_id: str
     session_id: str
-    athlete_id: str
+    """The athlete for this delivery is resolved server-side from
+    session_id -> sessions.athlete_id (see pipeline.evaluate_delivery), not
+    accepted directly here - a client-supplied athlete_id could silently
+    disagree with the session it's actually posted against (e.g. a coach
+    quick-switching between bowlers in one nets recording session), scoring
+    the delivery against the wrong athlete's baseline while persisting it
+    under the right one. One source of truth avoids that split."""
     capture_metadata: CaptureMetadata
     raw_keypoints: list[KeypointFrame]

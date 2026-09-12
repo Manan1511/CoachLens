@@ -247,7 +247,12 @@ def _filtered_or_raw(frames: list[KeypointFrame], fps: int) -> tuple[list[Keypoi
 
 
 def evaluate_delivery(request: DeliveryIngestionRequest) -> CoachingReport:
-    _check_consent(request.athlete_id)
+    # athlete_id is resolved from session_id, not accepted on the request -
+    # see DeliveryIngestionRequest.session_id's docstring. This also means an
+    # unknown session_id raises NotFoundError here, before anything is
+    # scored or persisted.
+    athlete_id = repository.get_athlete_id_for_session(request.session_id)
+    _check_consent(athlete_id)
 
     frames = request.raw_keypoints
     fps = request.capture_metadata.fps
@@ -263,7 +268,7 @@ def evaluate_delivery(request: DeliveryIngestionRequest) -> CoachingReport:
     # verdict, which has a hard FK dependency on it) is ever written -
     # avoiding an orphaned delivery with no verdict and a misleading 404 on
     # a later GET /reports/{id}.
-    scored = _score(request.athlete_id, ffs_frame_number, ffs_frame, was_filtered, filtered_frames)
+    scored = _score(athlete_id, ffs_frame_number, ffs_frame, was_filtered, filtered_frames)
 
     repository.save_delivery(request)
     return _persist_and_build_report(request.delivery_id, scored)
