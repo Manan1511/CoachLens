@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { DeltaGauge } from './DeltaGauge';
 import type { Baselines, Kinematics, Verdict } from '@/lib/api/types';
 import { formatDeg } from '@/lib/stats';
 
@@ -63,10 +64,16 @@ export function EvidenceDisclosure({
           />
           <Row label="Personal baseline" value={formatDeg(baselines.fixed_reference_median_deg)} />
           <Row label="Baseline IQR" value={formatDeg(baselines.fixed_reference_iqr_deg)} />
-          <Row label="Delta from baseline" value={formatDeg(baselines.delta_deg)} />
-          <Row label="Uncertainty band" value={formatDeg(baselines.uncertainty_band_deg)} />
           <Row label="Window pattern" value={WINDOW_LABELS[verdict.window_pattern]} />
           <Row label="Matches in window" value={String(verdict.window_matches)} />
+
+          {baselines.delta_deg !== null && baselines.uncertainty_band_deg !== null && (
+            <div className="col-span-2 max-mobile:col-span-1">
+              <p className="mb-1.5 text-ink-dim">Delta from baseline, against the uncertainty band</p>
+              <DeltaGauge delta={baselines.delta_deg} band={baselines.uncertainty_band_deg} />
+            </div>
+          )}
+
           {verdict.trigger_context_deltas && verdict.trigger_context_deltas.length > 0 && (
             <div className="col-span-2">
               <p className="mb-1 text-ink-dim">Contributing deltas</p>

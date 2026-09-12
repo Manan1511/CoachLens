@@ -60,6 +60,7 @@ export async function getAthleteHistory(athleteId: string): Promise<SessionSumma
         session_id: delivery.session_id,
         created_at: delivery.created_at,
         latest_status: verdict?.status ?? null,
+        delta_deg: verdict?.delta_deg ?? null,
         actioned: verdict ? actionFor(verdict.id) : null,
       };
     });

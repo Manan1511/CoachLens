@@ -154,6 +154,27 @@ export function ArrowRightIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function PersonIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+    </svg>
+  );
+}
+
+/** A raised hand, used with a left/right label to indicate bowling arm. */
+export function HandIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M8 12V5a1.5 1.5 0 0 1 3 0v5" />
+      <path d="M11 10V4a1.5 1.5 0 0 1 3 0v6" />
+      <path d="M14 10V5a1.5 1.5 0 0 1 3 0v6" />
+      <path d="M17 11.5V9a1.5 1.5 0 0 1 3 0v6c0 3.9-3.1 7-7 7h-1c-3 0-4.2-1-6-3l-2.6-3.4a1.4 1.4 0 0 1 2-2L8 16" />
+    </svg>
+  );
+}
+
 /** The mark: a C closing around a measured angle. */
 export function LogoMark(props: SVGProps<SVGSVGElement>) {
   return (

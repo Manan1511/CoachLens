@@ -14,10 +14,38 @@ import type {
  *  handlers.ts — this is a mock database, not fixture constants. */
 
 export const ATHLETES: Athlete[] = [
-  { id: 'ATH-001', name: 'Arjun Mehta', dob: '2010-03-14', guardian_consent: true },
-  { id: 'ATH-002', name: 'Priya Nair', dob: '2007-11-02', guardian_consent: false },
-  { id: 'ATH-003', name: 'Rohan Iyer', dob: '2002-06-21', guardian_consent: true },
-  { id: 'ATH-004', name: 'Kabir Sethi', dob: '2011-01-30', guardian_consent: true },
+  {
+    id: 'ATH-001',
+    name: 'Arjun Mehta',
+    dob: '2010-03-14',
+    guardian_consent: true,
+    gender: 'male',
+    bowling_arm: 'right',
+  },
+  {
+    id: 'ATH-002',
+    name: 'Priya Nair',
+    dob: '2007-11-02',
+    guardian_consent: false,
+    gender: 'female',
+    bowling_arm: 'left',
+  },
+  {
+    id: 'ATH-003',
+    name: 'Rohan Iyer',
+    dob: '2002-06-21',
+    guardian_consent: true,
+    gender: 'male',
+    bowling_arm: 'right',
+  },
+  {
+    id: 'ATH-004',
+    name: 'Kabir Sethi',
+    dob: '2011-01-30',
+    guardian_consent: true,
+    gender: 'other',
+    bowling_arm: 'left',
+  },
 ];
 
 interface MockVerdict {

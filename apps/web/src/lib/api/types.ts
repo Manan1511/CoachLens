@@ -95,11 +95,23 @@ export interface BaselineConfirmResult {
  * for real endpoints later, once your teammate adds them, doesn't change
  * these shapes. */
 
+export type Gender = 'male' | 'female' | 'other';
+export type BowlingArm = 'left' | 'right';
+
 export interface Athlete {
   id: string;
   name: string;
   dob: string | null;
   guardian_consent: boolean;
+  /** `gender` and `bowling_arm` are NOT columns on the real `athletes` table
+   *  (services/coaching-api/supabase/migrations/..._init_coachlens_schema.sql
+   *  has only id/name/dob/guardian_consent/created_at) — mock-only additions
+   *  for a more informative roster/athlete view. Bowling arm in particular
+   *  is coaching-relevant (technique differs left/right-arm) and would need
+   *  a real column + a teammate's migration before this is anything but a
+   *  UI placeholder. */
+  gender: Gender;
+  bowling_arm: BowlingArm;
 }
 
 export interface DeliverySummary {
@@ -109,6 +121,9 @@ export interface DeliverySummary {
   /** Latest verdict for this delivery — undefined if ingest hasn't scored
    *  it yet (not modeled in the mock data, kept for shape-honesty). */
   latest_status: DeliveryStatus | null;
+  /** The delta that produced `latest_status`, for trend charting. Null for
+   *  DATA_SUPPRESSED (no measurement) or when no verdict exists yet. */
+  delta_deg: number | null;
   /** Whether a coach has already approved/dismissed this delivery's latest
    *  verdict. The real API has no way to read this back yet — mock-only. */
   actioned: CoachActionType | null;
