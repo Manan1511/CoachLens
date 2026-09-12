@@ -4,6 +4,7 @@ import type {
   Athlete,
   BaselineConfirmResult,
   BaselineRecord,
+  BowlingArm,
   CoachActionResult,
   CoachActionType,
   CoachingReport,
@@ -117,6 +118,19 @@ export const api = {
   listAthletes: async (): Promise<Athlete[]> => {
     const dtos = await apiFetch<AthleteSummaryDto[]>('/api/v1/athletes');
     return dtos.map(toAthlete);
+  },
+
+  createAthlete: async (payload: {
+    name: string;
+    bowling_arm: BowlingArm;
+    dob?: string | null;
+    guardian_consent?: boolean;
+  }): Promise<Athlete> => {
+    const dto = await apiFetch<AthleteSummaryDto>('/api/v1/athletes', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return toAthlete(dto);
   },
 
   /** No single-athlete GET exists (src/coaching/routes/athletes.py has

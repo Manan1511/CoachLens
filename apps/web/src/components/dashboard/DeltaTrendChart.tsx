@@ -18,22 +18,17 @@ const STATUS_COLOR: Record<DeliveryStatus, string> = {
   BENCHMARK_PENDING: 'var(--color-ink-muted)',
 };
 
-const WIDTH = 600;
-const HEIGHT = 180;
-const PAD_X = 16;
-const PAD_Y = 16;
-const PAD_RIGHT = 40; // room for the band's +/- degree labels
-const PAD_BOTTOM = 28; // room for date labels along the x-axis
+const WIDTH = 620;
+const HEIGHT = 230;
+const PAD_X = 24;
+const PAD_Y = 24;
+const PAD_RIGHT = 60; // room for the band's +/- degree labels
+const PAD_BOTTOM = 36; // room for ball/date labels along the x-axis
 
-/** A hand-rolled SVG line chart — no charting library, matching the site's
- *  existing custom-SVG approach (the marketing page's step arc) rather than
- *  adding a dependency for one chart. Plots delta-from-baseline over the
- *  athlete's recent deliveries, oldest to newest, with the uncertainty band
- *  shaded and labelled in degrees so a coach can read actual magnitude, not
- *  just "in or out of the zone". Suppressed deliveries (no measurement)
- *  break the line rather than plotting as zero. The most recent measured
- *  point is drawn larger — it's the one answer most likely to matter right
- *  now — and hovering any point swaps in its exact date/delta/status. */
+/** Improved readable SVG line chart plotting delta-from-baseline over the
+ *  athlete's deliveries. Shaded baseline tolerance zone is clearly contrasted
+ *  with dashed boundaries, each ball carries clear delta labels, y-axis thresholds
+ *  are crisp and readable, and x-axis labels show delivery numbers when dates match. */
 export function DeltaTrendChart({
   points,
   uncertaintyBand,
@@ -48,7 +43,7 @@ export function DeltaTrendChart({
     return <p className="text-small text-ink-secondary">Not enough measured deliveries yet to chart.</p>;
   }
 
-  const maxAbs = Math.max(uncertaintyBand, ...validDeltas.map(Math.abs)) * 1.15;
+  const maxAbs = Math.max(uncertaintyBand, ...validDeltas.map(Math.abs)) * 1.25;
   const innerW = WIDTH - PAD_X - PAD_RIGHT;
   const innerH = HEIGHT - PAD_Y - PAD_BOTTOM;
 
@@ -66,7 +61,6 @@ export function DeltaTrendChart({
   );
 
   // Break the line wherever a delivery has no delta (suppressed / no verdict)
-  // instead of interpolating across a gap that isn't real data.
   const segments: { x: number; y: number }[][] = [];
   let current: { x: number; y: number }[] = [];
   points.forEach((p, i) => {
@@ -83,111 +77,188 @@ export function DeltaTrendChart({
     new Set(points.map((p) => p.status).filter((s): s is DeliveryStatus => s !== null)),
   );
 
-  // A handful of evenly-spaced x-axis date labels rather than one per point
-  // — with more than a few deliveries, every label would overlap.
-  const tickCount = Math.min(points.length, 4);
-  const tickIndices =
-    points.length <= 1
-      ? [0]
-      : Array.from({ length: tickCount }, (_, i) => Math.round((i / (tickCount - 1)) * (points.length - 1)));
+  // Check if all deliveries belong to the same day
+  const uniqueDates = Array.from(new Set(points.map((p) => p.date)));
+  const singleDate = uniqueDates.length <= 1;
 
   const hovered = hoverIndex !== null ? points[hoverIndex] : null;
   const hoveredX = hoverIndex !== null ? x(hoverIndex) : 0;
   const hoveredY = hovered?.delta !== null && hovered !== null ? y(hovered.delta) : 0;
-  const TOOLTIP_W = 132;
+  const TOOLTIP_W = 140;
   const tooltipFlipped = hoveredX > WIDTH - PAD_RIGHT - TOOLTIP_W;
 
   return (
-    <div>
-      <svg
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        className="w-full overflow-visible"
-        role="img"
-        aria-label="Baseline delta trend"
-      >
-        <rect x={PAD_X} y={bandTop} width={innerW} height={bandBottom - bandTop} fill="rgba(255,255,255,0.05)" />
-        <line x1={PAD_X} y1={zeroY} x2={PAD_X + innerW} y2={zeroY} stroke="var(--color-line)" strokeWidth={1} />
-
-        {/* Degree labels for the band's edges and the zero line — the shaded
-            rectangle alone tells a coach "in vs out" but not by how much. */}
-        <text x={PAD_X + innerW + 6} y={bandTop} dy="0.32em" className="fill-ink-dim text-[10px]">
-          +{formatDeg(uncertaintyBand)}
-        </text>
-        <text x={PAD_X + innerW + 6} y={zeroY} dy="0.32em" className="fill-ink-dim text-[10px]">
-          0°
-        </text>
-        <text x={PAD_X + innerW + 6} y={bandBottom} dy="0.32em" className="fill-ink-dim text-[10px]">
-          −{formatDeg(uncertaintyBand)}
-        </text>
-
-        {/* X-axis date ticks */}
-        {tickIndices.map((i) => (
-          <text
-            key={i}
-            x={x(i)}
-            y={HEIGHT - 8}
-            textAnchor={i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'}
-            className="fill-ink-dim text-[10px]"
-          >
-            {points[i].date}
-          </text>
-        ))}
-
-        {segments.map((seg, i) => (
-          <polyline
-            key={i}
-            points={seg.map((p) => `${p.x},${p.y}`).join(' ')}
-            fill="none"
-            stroke="var(--color-ink-dim)"
-            strokeWidth={1.5}
+    <div className="space-y-3">
+      {/* Visual Chart Card */}
+      <div className="rounded-xl border border-line bg-black/40 p-3.5 backdrop-blur-sm shadow-inner">
+        <svg
+          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          className="w-full overflow-visible"
+          role="img"
+          aria-label="Baseline delta trend"
+        >
+          {/* Shaded Personal Baseline Zone */}
+          <rect
+            x={PAD_X}
+            y={bandTop}
+            width={innerW}
+            height={Math.max(4, bandBottom - bandTop)}
+            fill="rgba(255, 255, 255, 0.08)"
+            stroke="rgba(255, 255, 255, 0.22)"
+            strokeDasharray="4 4"
+            strokeWidth={1}
+            rx={4}
           />
-        ))}
 
-        {points.map((p, i) => {
-          if (p.delta === null) return null;
-          const isLast = i === lastMeasuredIndex;
-          const isHovered = i === hoverIndex;
-          return (
-            <g key={i}>
-              {/* Invisible larger hit target so hovering near a small dot
-                  doesn't require pixel-perfect aim. */}
-              <circle
-                cx={x(i)}
-                cy={y(p.delta)}
-                r={10}
-                fill="transparent"
-                onMouseEnter={() => setHoverIndex(i)}
-                onMouseLeave={() => setHoverIndex((h) => (h === i ? null : h))}
-              />
-              <circle
-                cx={x(i)}
-                cy={y(p.delta)}
-                r={isHovered ? 6 : isLast ? 5 : 4}
-                fill={p.status ? STATUS_COLOR[p.status] : 'var(--color-ink-dim)'}
-                stroke={isLast ? 'var(--color-canvas)' : 'none'}
-                strokeWidth={isLast ? 2 : 0}
-                className="pointer-events-none transition-[r] duration-150"
-              />
-            </g>
-          );
-        })}
+          {/* Zero baseline reference line */}
+          <line
+            x1={PAD_X}
+            y1={zeroY}
+            x2={PAD_X + innerW}
+            y2={zeroY}
+            stroke="rgba(255, 255, 255, 0.35)"
+            strokeWidth={1.2}
+          />
 
-        {hovered && hovered.delta !== null && (
-          <g
-            transform={`translate(${tooltipFlipped ? hoveredX - TOOLTIP_W - 8 : hoveredX + 8}, ${Math.max(hoveredY - 34, 4)})`}
-          >
-            <rect width={TOOLTIP_W} height={44} rx={6} fill="var(--color-surface)" stroke="var(--color-line)" />
-            <text x={8} y={17} className="fill-ink text-[11px] font-medium">
-              {formatDeg(hovered.delta)} · {hovered.date}
+          {/* Y-Axis Degree Threshold Labels (Clear & High-Contrast) */}
+          <g className="font-mono text-[11px] font-medium select-none">
+            <text x={PAD_X + innerW + 8} y={bandTop} dy="0.32em" fill="#34d399">
+              +{formatDeg(uncertaintyBand)}
             </text>
-            <text x={8} y={31} className="fill-ink-dim text-[10px]">
-              {hovered.status ? VERDICT_COPY[hovered.status].label : 'No verdict'}
+            <text x={PAD_X + innerW + 8} y={zeroY} dy="0.32em" fill="#e4e4e7" fontWeight="bold">
+              0°
+            </text>
+            <text x={PAD_X + innerW + 8} y={bandBottom} dy="0.32em" fill="#f87171">
+              -{formatDeg(uncertaintyBand)}
             </text>
           </g>
-        )}
-      </svg>
 
-      <p className="mt-1.5 mb-1 text-caption text-ink-secondary">Shaded band = within personal baseline</p>
+          {/* Connecting Trend Line */}
+          {segments.map((seg, i) => (
+            <polyline
+              key={i}
+              points={seg.map((p) => `${p.x},${p.y}`).join(' ')}
+              fill="none"
+              stroke="#a1a1aa"
+              strokeWidth={2.2}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          ))}
+
+          {/* X-Axis Ticks: Delivery # or Date */}
+          {points.map((p, i) => {
+            const label = singleDate ? `Ball ${i + 1}` : p.date;
+            return (
+              <text
+                key={i}
+                x={x(i)}
+                y={HEIGHT - 10}
+                textAnchor="middle"
+                className="fill-ink-secondary font-mono text-[10px] font-medium select-none"
+              >
+                {label}
+              </text>
+            );
+          })}
+
+          {/* Data Points and Delta Labels */}
+          {points.map((p, i) => {
+            if (p.delta === null) return null;
+            const isLast = i === lastMeasuredIndex;
+            const isHovered = i === hoverIndex;
+            const pointX = x(i);
+            const pointY = y(p.delta);
+            const color = p.status ? STATUS_COLOR[p.status] : 'var(--color-ink-muted)';
+            const deltaSign = p.delta > 0 ? '+' : '';
+
+            return (
+              <g key={i}>
+                {/* Hit area */}
+                <circle
+                  cx={pointX}
+                  cy={pointY}
+                  r={14}
+                  fill="transparent"
+                  className="cursor-pointer"
+                  onMouseEnter={() => setHoverIndex(i)}
+                  onMouseLeave={() => setHoverIndex((h) => (h === i ? null : h))}
+                />
+
+                {/* Outer ring for selected or latest */}
+                {isLast && (
+                  <circle
+                    cx={pointX}
+                    cy={pointY}
+                    r={9}
+                    fill="none"
+                    stroke={color}
+                    strokeWidth={1.5}
+                    opacity={0.6}
+                  />
+                )}
+
+                {/* Point circle */}
+                <circle
+                  cx={pointX}
+                  cy={pointY}
+                  r={isHovered ? 7 : isLast ? 6 : 5}
+                  fill={color}
+                  stroke="#18181b"
+                  strokeWidth={2}
+                  className="pointer-events-none transition-all duration-150"
+                />
+
+                {/* Always-visible numerical delta label */}
+                <text
+                  x={pointX}
+                  y={p.delta >= 0 ? pointY - 10 : pointY + 16}
+                  textAnchor="middle"
+                  className="font-mono text-[10px] font-bold select-none"
+                  fill={color}
+                >
+                  {`${deltaSign}${p.delta.toFixed(1)}°`}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Hover Tooltip */}
+          {hovered && hovered.delta !== null && (
+            <g
+              transform={`translate(${tooltipFlipped ? hoveredX - TOOLTIP_W - 8 : hoveredX + 8}, ${Math.max(hoveredY - 38, 6)})`}
+            >
+              <rect
+                width={TOOLTIP_W}
+                height={46}
+                rx={6}
+                fill="#18181b"
+                stroke="#3f3f46"
+                strokeWidth={1}
+                className="shadow-xl"
+              />
+              <text x={8} y={18} fill="#ffffff" className="font-mono text-[11px] font-semibold">
+                {formatDeg(hovered.delta)} · {singleDate ? `Delivery #${(hoverIndex ?? 0) + 1}` : hovered.date}
+              </text>
+              <text x={8} y={34} fill="#a1a1aa" className="text-[10px]">
+                {hovered.status ? VERDICT_COPY[hovered.status].label : 'No verdict'}
+              </text>
+            </g>
+          )}
+        </svg>
+      </div>
+
+      {/* Caption & Legend */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-caption text-ink-secondary">
+        <p className="flex items-center gap-1.5 font-medium">
+          <span className="inline-block size-2.5 rounded-sm border border-white/40 bg-white/10" />
+          <span>Shaded band = within baseline (±{formatDeg(uncertaintyBand)})</span>
+        </p>
+        {singleDate && uniqueDates[0] && (
+          <p className="font-mono text-[11px] text-ink-dim">Session: {uniqueDates[0]}</p>
+        )}
+      </div>
+
       {statusesPresent.length > 0 && <StatusLegend statuses={statusesPresent} />}
     </div>
   );

@@ -1,6 +1,6 @@
 # CoachLens
 
-AI-assisted quantitative 2D biomechanical review assistant for fast bowling stride analysis (grassroots cricket). See [`CoachLens_PRD.md`](CoachLens_PRD.md) and [`CoachLens_PRD_System_Specification.pdf`](CoachLens_PRD_System_Specification.pdf) for the full product/technical spec — this README covers repo layout and team workflow.
+AI-assisted quantitative 2D biomechanical review assistant for fast bowling stride analysis (grassroots cricket). See [`CoachLens_PRD.md`](CoachLens_PRD.md) and [`CoachLens_PRD_System_Specification.pdf`](CoachLens_PRD_System_Specification.pdf) for the full product/technical spec: this README covers repo layout and team workflow.
 
 > CoachLens is a **quantitative coaching tool**, not a medical/injury diagnostic system. Keep that boundary in mind when naming code, fields, and UI copy (see PRD §1).
 
@@ -71,7 +71,7 @@ PYTHONPATH=. .venv/Scripts/python scripts/demo_walkthrough.py
 cd services/coaching-api
 .venv/Scripts/python -m pytest
 ```
-*84 unit, contract, and integration tests passing.*
+*112 unit, contract, and integration tests passing.*
 
 ---
 
@@ -79,11 +79,11 @@ cd services/coaching-api
 
 The system is a decoupled tri-layer pipeline (PRD §4):
 
-1. **Measurement Engine** — pose extraction, quality firewall, filtering, event (FFS) detection.
-2. **Interpretation Engine** — deterministic baseline triangulation, 3-of-5 rolling window flagging.
-3. **Coaching Engine** — human-in-the-loop review, drill retrieval, audit logging, export.
+1. **Measurement Engine**: pose extraction, quality firewall, filtering, event (FFS) detection.
+2. **Interpretation Engine**: deterministic baseline triangulation, 3-of-5 rolling window flagging.
+3. **Coaching Engine**: human-in-the-loop review, drill retrieval, audit logging, export.
 
-Each layer should map to its own service/package so ML (Layer 1) stays isolated from deterministic business logic (Layers 2–3), per the "Deterministic Business Logic" invariant.
+Each layer should map to its own service/package so ML (Layer 1) stays isolated from deterministic business logic (Layers 2-3), per the "Deterministic Business Logic" invariant.
 
 ## Proposed folder structure
 
@@ -91,8 +91,8 @@ Each layer should map to its own service/package so ML (Layer 1) stays isolated 
 coachlens/
 ├── apps/
 │   └── web/                   # React/TS/Tailwind app: marketing site (/) + coach
-│                               # dashboard (/app/*) in one routed build — see
-│                               # DESIGN.md and apps/web/src/routes/dashboard/
+│                               # dashboard (/app/*) in one routed build (see
+│                               # DESIGN.md and apps/web/src/routes/dashboard/)
 │
 ├── services/
 │   ├── measurement-engine/    # Layer 1: pose extraction, quality firewall, filtering, FFS detection
@@ -102,7 +102,7 @@ coachlens/
 │   ├── interpretation-engine/ # Layer 2: baseline triangulation, rolling window, angle calculators
 │   │   ├── src/
 │   │   └── tests/
-│   ├── coaching-api/          # Layer 3: FastAPI service — sessions, deliveries, reports, drills
+│   ├── coaching-api/          # Layer 3: FastAPI service (sessions, deliveries, reports, drills)
 │   │   ├── src/
 │   │   │   ├── routes/        # /api/v1/sessions, /api/v1/reports, ...
 │   │   │   ├── schemas/       # JSON contract models (delivery ingestion, coaching card)
