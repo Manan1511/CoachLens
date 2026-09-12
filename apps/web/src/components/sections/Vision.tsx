@@ -1,4 +1,5 @@
 import { useMemo, useRef } from 'react';
+import { Wordmark } from '@/components/icons';
 import { Reveal } from '@/components/ui/Reveal';
 import { SectionLabel } from '@/components/ui/SectionHeading';
 import { VISION } from '@/content/vision';
@@ -27,7 +28,7 @@ export function Vision() {
           {words.map(({ word, isAccent }, i) => (
             <span key={`${word}-${i}`}>
               <span className="vision-word" data-accent={isAccent || undefined}>
-                {word}
+                {word.toLowerCase() === 'coachlens' ? <Wordmark /> : word}
               </span>
               {i < words.length - 1 ? ' ' : ''}
             </span>

@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { LogoMark, Wordmark } from '@/components/icons';
-import { Button } from '@/components/ui/Button';
 import { NAV_LINKS } from '@/content/nav';
 import { useActiveSection } from '@/hooks/useActiveSection';
 import { useStickyNav } from '@/hooks/useStickyNav';
@@ -51,7 +50,7 @@ export function Nav() {
                 key={link.id}
                 href={`#${link.id}`}
                 data-active={active === link.id}
-                className="rounded-full px-4 py-2 text-small font-medium text-ink-secondary transition-all duration-200 ease-smooth hover:text-ink data-[active=true]:bg-accent data-[active=true]:text-canvas"
+                className="rounded-full px-4 py-2 text-small font-medium text-ink-secondary transition-all duration-200 ease-smooth hover:bg-ink hover:text-canvas data-[active=true]:bg-accent data-[active=true]:text-canvas"
                 onClick={(e) => {
                   e.preventDefault();
                   goTo(link.id);
@@ -62,26 +61,22 @@ export function Nav() {
             ))}
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 max-tablet:hidden">
             <Link
-              to="/app"
-              className="whitespace-nowrap text-small font-medium text-ink-secondary transition-colors duration-200 hover:text-ink max-tablet:hidden"
+              to="/app/login"
+              className="whitespace-nowrap rounded-full border border-line px-4 py-2 text-small font-medium text-ink-secondary transition-all duration-200 ease-smooth hover:border-ink hover:bg-ink hover:text-canvas"
             >
-              Coach sign in
+              Sign in
             </Link>
-
-            <Button
-              href="#cta"
-              arrow
-              className="max-tablet:hidden"
-              onClick={(e) => {
-                e.preventDefault();
-                goTo('cta');
-              }}
+            <Link
+              to="/app/login?mode=sign-up"
+              className="whitespace-nowrap rounded-full border border-line px-4 py-2 text-small font-medium text-ink-secondary transition-all duration-200 ease-smooth hover:border-ink hover:bg-ink hover:text-canvas"
             >
-              Request early access
-            </Button>
+              Sign up
+            </Link>
+          </div>
 
+          <div className="flex items-center gap-3">
             <button
               type="button"
               className="hidden w-7 flex-col gap-[5px] py-1 max-tablet:flex"

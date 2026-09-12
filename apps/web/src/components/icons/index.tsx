@@ -1,4 +1,4 @@
-import type { SVGProps } from 'react';
+import { Fragment, type SVGProps } from 'react';
 
 /* Every icon inherits colour via currentColor and sizes from the parent
    unless overridden. Stroke widths match the original inline SVGs. */
@@ -194,6 +194,24 @@ export function Wordmark({ className = '' }: { className?: string }) {
       <span className="font-bold">ens</span>
       <span className="visually-hidden">CoachLens</span>
     </span>
+  );
+}
+
+/** For prose that mentions the brand name inline rather than a dedicated
+ *  lockup (a step title, the footer's copyright/disclaimer line) — renders
+ *  `text` verbatim except every exact "CoachLens" substring is swapped for
+ *  the glyph, so the acute L shows up even mid-sentence. */
+export function WordmarkText({ text }: { text: string }) {
+  const parts = text.split('CoachLens');
+  return (
+    <>
+      {parts.map((part, i) => (
+        <Fragment key={i}>
+          {part}
+          {i < parts.length - 1 && <Wordmark />}
+        </Fragment>
+      ))}
+    </>
   );
 }
 

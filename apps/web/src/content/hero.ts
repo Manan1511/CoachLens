@@ -4,8 +4,6 @@
  *  brand carries the section on its own, the way ethnocare's product name
  *  carries theirs. */
 export const HERO = {
-  wordFirst: 'Coach',
-  wordSecond: 'Lens',
   image: {
     src: '/images/hero-bg.jpg',
     alt: 'Fast bowler mid-delivery at the nets',

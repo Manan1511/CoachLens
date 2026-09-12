@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { Wordmark, WordmarkText } from '@/components/icons';
 import {
   FOOTER_BOTTOM,
   FOOTER_COLUMNS,
@@ -18,7 +19,7 @@ export function Footer() {
           aria-hidden
           className="mb-xl overflow-hidden font-heading text-giant leading-[0.9] font-semibold tracking-[-0.02em] text-ghost"
         >
-          COACHLENS
+          <Wordmark className="uppercase" />
         </div>
 
         <div className="mb-xl grid grid-cols-[1fr_1fr_1fr_2fr] gap-lg max-tablet:grid-cols-2 max-tablet:gap-md max-mobile:grid-cols-1">
@@ -60,9 +61,13 @@ export function Footer() {
         </div>
 
         <div className="flex items-center justify-between border-t border-line pt-md text-caption text-ink-dim max-mobile:flex-col max-mobile:gap-sm max-mobile:text-center">
-          <span>{FOOTER_BOTTOM.copyright}</span>
+          <span>
+            <WordmarkText text={FOOTER_BOTTOM.copyright} />
+          </span>
           {/* The non-negotiable boundary: a coaching tool, never a diagnosis. */}
-          <span>{FOOTER_BOTTOM.disclaimer}</span>
+          <span>
+            <WordmarkText text={FOOTER_BOTTOM.disclaimer} />
+          </span>
         </div>
       </div>
     </footer>

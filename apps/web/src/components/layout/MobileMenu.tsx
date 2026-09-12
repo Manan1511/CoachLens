@@ -50,11 +50,18 @@ export function MobileMenu({
       ))}
 
       <Link
-        to="/app"
+        to="/app/login"
         tabIndex={open ? 0 : -1}
         className="mobile-menu-link block py-2 font-heading text-menu-link font-normal text-ink-secondary hover:text-accent"
       >
-        Coach sign in
+        Sign in
+      </Link>
+      <Link
+        to="/app/login?mode=sign-up"
+        tabIndex={open ? 0 : -1}
+        className="mobile-menu-link block py-2 font-heading text-menu-link font-normal text-ink-secondary hover:text-accent"
+      >
+        Sign up
       </Link>
     </div>
   );

@@ -206,24 +206,6 @@
     opacity: 0.3;
   }
 
-  .science-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--color-accent), transparent);
-  }
-
-  .transparency-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, var(--color-glass-light), transparent);
-    pointer-events: none;
-  }
-
   /* ── Intro wordmark ──
      The angled L is sized in em so it tracks the brand font size. */
   .intro-angle {

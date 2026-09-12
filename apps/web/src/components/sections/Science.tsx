@@ -9,6 +9,11 @@ import {
 } from '@/components/ui/SectionHeading';
 import { SCIENCE_CARDS, SCIENCE_HEADER, TRANSPARENCY } from '@/content/science';
 
+/** An editorial, numbered list rather than a pair of bordered cards — a
+ *  large ghost numeral per row, one hairline rule between the two
+ *  measurements, and the key facts read as a plain inline line instead of
+ *  little pill backgrounds. DESIGN.md's elevation rule is a hairline, never
+ *  a fill, so this leans on rules and whitespace instead of boxes. */
 export function Science() {
   return (
     <section id="science" className="bg-canvas py-2xl">
@@ -22,39 +27,43 @@ export function Science() {
           <SectionIntro>{SCIENCE_HEADER.intro}</SectionIntro>
         </Reveal>
 
-        <div className="mb-xl grid grid-cols-2 gap-lg max-tablet:grid-cols-1">
-          {SCIENCE_CARDS.map(({ icon: Icon, title, desc, rows }) => (
+        <div className="mb-xl flex flex-col divide-y divide-line border-y border-line">
+          {SCIENCE_CARDS.map(({ icon: Icon, title, desc, rows }, i) => (
             <Reveal
               key={title}
-              className="science-card relative overflow-hidden rounded-lg border border-line bg-surface p-lg"
+              className="grid grid-cols-[4.5rem_1fr] gap-lg py-xl max-mobile:grid-cols-1 max-mobile:gap-sm"
             >
-              <div className="mb-md flex size-12 items-center justify-center rounded-md bg-white/7 text-accent">
-                <Icon className="size-6" />
-              </div>
-              <h3 className="mb-sm text-h3">{title}</h3>
-              <p className="mb-md leading-[1.8] text-ink-secondary">{desc}</p>
+              <span className="font-heading text-h1 font-bold text-ink-muted">
+                0{i + 1}
+              </span>
 
-              <div className="flex flex-col gap-2">
-                {rows.map((row) => (
-                  <div
-                    key={row.label}
-                    className="flex items-center justify-between rounded-sm bg-glass-light px-3 py-2 text-small"
-                  >
-                    <span className="text-ink-dim">{row.label}</span>
-                    <span className="font-heading font-semibold text-ink">{row.value}</span>
-                  </div>
-                ))}
+              <div>
+                <div className="mb-sm flex items-center gap-3">
+                  <Icon className="size-6 shrink-0 text-accent" />
+                  <h3 className="text-h3">{title}</h3>
+                </div>
+                <p className="mb-md max-w-[600px] leading-[1.8] text-ink-secondary">{desc}</p>
+
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-small">
+                  {rows.map((row, j) => (
+                    <span key={row.label} className="flex items-center gap-1.5">
+                      {j > 0 && <span className="text-ink-muted">/</span>}
+                      <span className="text-ink-dim">{row.label}</span>
+                      <span className="font-heading font-semibold text-ink">{row.value}</span>
+                    </span>
+                  ))}
+                </div>
               </div>
             </Reveal>
           ))}
         </div>
 
-        {/* The worked example: what was seen, what it might mean, coach decides. */}
-        <Reveal className="transparency-card relative mx-auto max-w-[800px] overflow-hidden rounded-lg border border-line-strong bg-surface p-lg">
-          <div className="mb-md flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-full bg-white/9 text-accent">
-              <InfoIcon className="size-[18px]" />
-            </div>
+        {/* The worked example: what was seen, what it might mean, coach decides.
+            A left accent rule stands in for a card border — distinct enough to
+            read as a callout without becoming another floating box. */}
+        <Reveal className="relative mx-auto max-w-[800px] border-l-2 border-accent py-1 pl-lg">
+          <div className="mb-md flex items-center gap-2.5">
+            <InfoIcon className="size-[18px] shrink-0 text-accent" />
             <h3 className="text-h4">{TRANSPARENCY.title}</h3>
             <Badge tone="yellow" className="ml-auto">
               {TRANSPARENCY.badge}

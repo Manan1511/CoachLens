@@ -8,6 +8,10 @@ import {
 } from '@/components/ui/SectionHeading';
 import { METRIC_TARGETS, METRICS_HEADER } from '@/content/metrics';
 
+/** A single contiguous stat strip — hairline dividers between numbers
+ *  instead of five separate bordered cards, closer to a spec sheet than a
+ *  grid of tiles. Matches DESIGN.md's own rule that elevation here is a
+ *  hairline, never a card of its own. */
 export function Metrics() {
   return (
     <section
@@ -24,12 +28,9 @@ export function Metrics() {
           <SectionIntro>{METRICS_HEADER.intro}</SectionIntro>
         </Reveal>
 
-        <Stagger className="relative grid grid-cols-5 gap-md max-tablet:grid-cols-3 max-mobile:grid-cols-2">
+        <Stagger className="relative flex flex-col divide-y divide-line border-y border-line max-tablet:border-x-0 md:flex-row md:divide-x md:divide-y-0">
           {METRIC_TARGETS.map((metric) => (
-            <div
-              key={metric.label}
-              className="rounded-md border border-line bg-surface p-md text-center transition-all duration-[400ms] ease-smooth hover:-translate-y-1 hover:border-line-strong hover:shadow-glow"
-            >
+            <div key={metric.label} className="flex-1 px-md py-xl text-center">
               <div className="mb-xs font-heading text-metric leading-none text-ink">
                 <Counter target={metric.target} symbol={metric.symbol} />
               </div>

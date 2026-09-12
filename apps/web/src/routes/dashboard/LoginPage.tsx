@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { Button } from '@/components/ui/Button';
 import { LogoMark, Wordmark } from '@/components/icons';
 import { useCoach } from '@/lib/auth/coach-auth';
@@ -15,7 +15,8 @@ type Mode = 'sign-in' | 'sign-up';
 export function LoginPage() {
   const { coach, loading, signIn, signUp } = useCoach();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<Mode>('sign-in');
+  const [searchParams] = useSearchParams();
+  const [mode, setMode] = useState<Mode>(searchParams.get('mode') === 'sign-up' ? 'sign-up' : 'sign-in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

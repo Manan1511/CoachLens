@@ -27,12 +27,24 @@ export function Hero() {
         <div className="absolute inset-0 bg-gradient-to-b from-canvas/40 via-transparent to-canvas" />
       </div>
 
-      <h1
-        className="hero-wordmark relative z-[2] translate-y-6 whitespace-nowrap text-giant leading-none tracking-[-0.03em] text-ink opacity-0"
-        aria-label={`${HERO.wordFirst}${HERO.wordSecond}`}
-      >
-        <span className="font-normal">{HERO.wordFirst}</span>
-        <span className="font-semibold">{HERO.wordSecond}</span>
+      {/* Two independently-transformable halves rather than the shared
+          Wordmark component — at rest they sit flush against each other
+          and read as one word, but useHeroTimeline splits and lifts them
+          apart on scroll (one up-and-left, one up-and-right), a curtain
+          reveal for the section behind. The split point matches Wordmark's
+          own Coach/Lens weight break, not an arbitrary letter count. */}
+      <h1 className="hero-wordmark relative z-[2] translate-y-6 text-giant leading-none tracking-[-0.03em] text-ink opacity-0">
+        <span className="hero-word-left inline-block whitespace-nowrap font-normal">Coach</span>
+        <span className="hero-word-right inline-block whitespace-nowrap font-bold">
+          <span className="intro-angle" aria-hidden>
+            <svg viewBox="0 0 34 64" fill="none" stroke="currentColor" strokeWidth={9} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7 59 L27 6" />
+              <path d="M7 59 L31 59" />
+            </svg>
+          </span>
+          ens
+        </span>
+        <span className="visually-hidden">CoachLens</span>
       </h1>
 
       <div className="hero-scroll-indicator animate-float absolute bottom-12 left-1/2 z-[2] flex -translate-x-1/2 flex-col items-center gap-2 opacity-0">
