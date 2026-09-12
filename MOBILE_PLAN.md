@@ -131,19 +131,25 @@ Budget check against the PRD's P50 ≤ 8s: a ~1.5s window at 120fps is ~180 fram
 - [x] `apps/mobile/` Expo TypeScript project created (SDK 57)
 - [x] Dependencies installed (first `npm install` failed on a network `ECONNRESET`; clean reinstall succeeded)
 - [x] `.gitignore` covers `node_modules/`, `.expo/`, `/android`, `/ios`, keystores (Expo template default)
-- [ ] `expo-dev-client` + EAS configured (`eas.json`, dev-client build profile in `app.json`)
-- [ ] First EAS Android build installs on a physical device via `adb install`
+- [x] `expo-dev-client` installed
+- [x] `eas.json` (development/preview/production profiles, dev-client APK for internal distribution) and `app.json` configured (landscape lock, black canvas per §4, bundle/package identifiers, EAS project linked as `@manan1511/coachlens-mobile`)
+- [x] `react-native-vision-camera` installed — **pinned to `4.7.3`, not latest.** `expo install` resolves to the newest major by default, which is now v5 ("VisionCamera Core"), rearchitected around Nitro Modules (`react-native-nitro-modules`/`react-native-nitro-image`) with no classic frame-processor plugin API. The community MediaPipe plugins this plan counts on (§0.5) target v4's frame-processor architecture, so v5 would have silently made every one of them incompatible. Recorded in the Dead End Registry.
+- [x] **Two separate worklet runtimes now required, not one**: `react-native-worklets-core` (VisionCamera's frame processors) and `react-native-worklets` (Reanimated 4's own engine — `react-native-reanimated/plugin` is now just a re-export of `react-native-worklets/plugin`, confirmed by reading its source). `babel.config.js` runs both; whether they coexist cleanly in one Babel pass across the same `'worklet'` directive is **unverified** — first thing the spike must confirm
+- [x] `enableFrameProcessors: true` set explicitly in the vision-camera Expo config plugin options — **not on by default.** Without it, the plugin never sets the `VisionCamera_enableFrameProcessors` Gradle property, and the native Android build silently excludes frame-processor support entirely. Would have looked like a working install until the first frame processor mysteriously failed
+- [ ] First EAS Android build installs on a physical device via `adb install` — build triggered, in progress
 
 ### Milestone 0.5 — Capture spike (**do this before anything else**)
-The riskiest assumptions in the plan, proven or disproven before UI is built on top of them. Vision Camera frame processors need `react-native-worklets-core` and a babel plugin, and compatibility with RN 0.86 / React 19 / New Architecture is **unverified** — candidates exist ([`react-native-mediapipe-posedetection`](https://github.com/EndLess728/react-native-mediapipe-posedetection), New-Architecture-only, 33 landmarks + GPU; [`react-native-mediapipe`](https://cdiddy77.github.io/react-native-mediapipe/docs/api_pages/pose-landmark-detection/); or a custom Kotlin plugin) but none is confirmed against this SDK.
+The riskiest assumptions in the plan, proven or disproven before UI is built on top of them. Compatibility with RN 0.86 / React 19 / New Architecture is **unverified** for both the frame-processor pipeline itself and any pose plugin on top of it. Candidate MediaPipe plugins exist ([`react-native-mediapipe-posedetection`](https://github.com/EndLess728/react-native-mediapipe-posedetection), New-Architecture-only, 33 landmarks + GPU; [`react-native-mediapipe`](https://cdiddy77.github.io/react-native-mediapipe/docs/api_pages/pose-landmark-detection/); or a custom Kotlin plugin) but none is confirmed against this SDK — deliberately not attempted yet.
 
-- [ ] Get per-frame pose landmarks out of a real camera feed in a dev-client build on a physical device
-- [ ] **Per-frame inference cost** (ms/frame) — decides whether 120fps capture is viable inside the P50 ≤ 8s budget, or whether 60fps is the honest ceiling (§8)
-- [ ] **Maximum sustainable capture fps** for a buffered window, with format actually granted (not requested)
+- [x] **Baseline diagnostic screen written** (`src/screens/CaptureSpikeScreen.tsx`) — camera permission, live preview, a frame processor that measures a real rolling fps from frame timestamps (not a naive per-frame counter) and reports achieved resolution/fps via `useRunOnJS` from `react-native-worklets-core` (not Reanimated's `runOnJS` — the frame processor runs on VisionCamera's own worklet context, a different bridge). No MediaPipe yet, deliberately: if a plugin fails, this isolates whether the failure is the plugin or the frame-processor plumbing itself.
+- [ ] **Confirm the above actually runs on a physical device** — this is the real test; nothing above is proven until it's seen running
+- [ ] **Whether the two worklet runtimes actually coexist** — first thing to check if the app crashes or the frame processor never fires
+- [ ] **Per-frame inference cost** (ms/frame) once MediaPipe is added — decides whether 120fps capture is viable inside the P50 ≤ 8s budget, or whether 60fps is the honest ceiling (§8)
+- [ ] **Maximum sustainable capture fps** for a buffered window, with format actually granted (not requested) — the diagnostic screen's overlay shows this directly
 - [ ] **Motion blur at the achievable shutter setting** — film fast limb movement in daylight, inspect blur, check whether keypoint confidence holds. Decides whether EV bias suffices or a custom Camera2 module is needed (§3)
 - [ ] **Whether actual exposure duration is readable** at all — determines what `shutter_speed_sec` can honestly contain (§7)
 - [ ] **Whether the `conf < 0.70` firewall catches an occluded far-side limb** (§7)
-- [ ] If no plugin works on SDK 57: record it in the Dead End Registry and evaluate fallbacks (custom Expo module, or pinning to an older SDK) before proceeding
+- [ ] If no MediaPipe plugin works on SDK 57: record it in the Dead End Registry and evaluate fallbacks (custom native module, or pinning to an older SDK) before proceeding
 
 ### Milestone 1 — Capture + guided setup
 - [ ] Camera permission flow

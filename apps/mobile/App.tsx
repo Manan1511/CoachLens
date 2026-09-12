@@ -1,20 +1,17 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
 
+import { CaptureSpikeScreen } from './src/screens/CaptureSpikeScreen';
+
+/**
+ * MOBILE_PLAN.md Milestone 0.5 spike is the app's whole surface right now.
+ * Real screens (§5: launch, sign-in, session setup, capture, verdict) are
+ * deliberately not built yet - see the milestone's own docstring for why.
+ */
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <>
+      <CaptureSpikeScreen />
+      <StatusBar style="light" hidden />
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
