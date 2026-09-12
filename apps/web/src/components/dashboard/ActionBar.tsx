@@ -58,7 +58,7 @@ export function ActionBar({
 
       {action.contraindications.length > 0 && (
         <p className="mb-md text-caption text-ink-secondary">
-          Informational only, not a clearance check — {action.contraindications.join('; ')}
+          Informational only, not a clearance check: {action.contraindications.join('; ')}
         </p>
       )}
 

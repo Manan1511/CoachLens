@@ -44,9 +44,9 @@ export function FlagHistory({
           <div className="min-w-0 flex-1">
             <p className="text-ink-secondary">{formatDateTime(flag.created_at)}</p>
             <p className="text-caption text-ink-secondary">
-              Front knee angle · Δ{flag.delta_deg !== null ? formatDeg(flag.delta_deg) : '—'}
+              Front knee angle · Δ{flag.delta_deg !== null ? formatDeg(flag.delta_deg) : '-'}
               {flag.actioned && ` · ${ACTION_LABEL[flag.actioned]}`}
-              {flag.action_note && ` — "${flag.action_note}"`}
+              {flag.action_note && ` (${flag.action_note})`}
             </p>
           </div>
 

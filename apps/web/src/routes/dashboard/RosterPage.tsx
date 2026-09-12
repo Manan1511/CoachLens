@@ -68,7 +68,7 @@ export function RosterPage() {
       <p className="mb-lg text-ink-secondary">
         {rows && rows.length > 0
           ? needsReview > 0
-            ? `${needsReview} of ${rows.length} ${rows.length === 1 ? 'athlete needs' : 'athletes need'} a look — listed first below.`
+            ? `${needsReview} of ${rows.length} ${rows.length === 1 ? 'athlete needs' : 'athletes need'} a look, listed first below.`
             : `${rows.length} ${rows.length === 1 ? 'athlete' : 'athletes'}, all on baseline.`
           : 'Athletes across your sessions.'}
       </p>
@@ -76,7 +76,7 @@ export function RosterPage() {
       {latestStatusCounts && Object.keys(latestStatusCounts).length > 0 && (
         <div className="mb-lg">
           <p className="mb-1.5 text-caption font-bold uppercase tracking-[0.1em] text-ink-secondary">
-            Team — latest verdict per athlete
+            Team: latest verdict per athlete
           </p>
           <StatusDistributionBar counts={latestStatusCounts} />
         </div>

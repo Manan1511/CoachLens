@@ -4,7 +4,7 @@ import { formatDeg } from '@/lib/stats';
 
 const WINDOW_LABELS: Record<Verdict['window_pattern'], string> = {
   NOT_APPLICABLE: 'No window evaluated',
-  ISOLATED: 'Isolated — does not repeat',
+  ISOLATED: 'Isolated: does not repeat',
   '3_OF_5_MATCHED': '3 or more of the last 5 deliveries agree',
 };
 
@@ -47,18 +47,18 @@ export function EvidenceDisclosure({
             value={
               kinematics.front_knee_confidence !== null
                 ? `${Math.round(kinematics.front_knee_confidence * 100)}%`
-                : '—'
+                : '-'
             }
           />
-          <Row label="FFS frame" value={kinematics.ffs_frame?.toString() ?? '—'} />
+          <Row label="FFS frame" value={kinematics.ffs_frame?.toString() ?? '-'} />
           <Row
             label="Filtered"
             value={
               kinematics.filtered === null
-                ? '—'
+                ? '-'
                 : kinematics.filtered
                   ? 'Yes (Butterworth)'
-                  : 'No — raw keypoints'
+                  : 'No (raw keypoints)'
             }
           />
           <Row label="Personal baseline" value={formatDeg(baselines.fixed_reference_median_deg)} />
@@ -69,7 +69,7 @@ export function EvidenceDisclosure({
           {verdict.trigger_context_deltas && verdict.trigger_context_deltas.length > 0 && (
             <div className="col-span-2 max-mobile:col-span-1">
               <p className="mb-1.5 text-ink-secondary">
-                Contributing deltas — the rolling window behind "{WINDOW_LABELS[verdict.window_pattern]}"
+                Contributing deltas: the rolling window behind "{WINDOW_LABELS[verdict.window_pattern]}"
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {verdict.trigger_context_deltas.map((d, i) => {

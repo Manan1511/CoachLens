@@ -198,7 +198,7 @@ function CaptureScreen({
       <div className="absolute inset-x-0 bottom-[7.5rem] flex flex-col items-center gap-2 px-md">
         {!selected?.athlete.bowling_arm && (
           <p className="rounded-full bg-black/70 px-4 py-2 text-caption text-ink-dim backdrop-blur-sm">
-            Bowling arm not set for {selected?.athlete.name ?? 'this athlete'} — can't determine the front leg.
+            Bowling arm not set for {selected?.athlete.name ?? 'this athlete'} (can't determine the front leg).
           </p>
         )}
 
@@ -339,15 +339,15 @@ function CaptureScreen({
 
       {/* --- Diagnostics overlay (top left) --- */}
       <div className="absolute left-4 top-4 rounded-xl border border-line bg-black/55 p-3 backdrop-blur-sm">
-        <DiagnosticRow label="Video" value={videoSize ? `${videoSize.width}x${videoSize.height}` : '—'} />
-        <DiagnosticRow label="Landmarks" value={frame ? frame.landmarks.length : '—'} />
+        <DiagnosticRow label="Video" value={videoSize ? `${videoSize.width}x${videoSize.height}` : '-'} />
+        <DiagnosticRow label="Landmarks" value={frame ? frame.landmarks.length : '-'} />
         <DiagnosticRow
           label="Right knee visibility"
-          value={rightKnee ? rightKnee.visibility.toFixed(2) : '—'}
+          value={rightKnee ? rightKnee.visibility.toFixed(2) : '-'}
         />
         <DiagnosticRow
           label="Inference time"
-          value={frame ? `${frame.inferenceMs.toFixed(1)}ms` : '—'}
+          value={frame ? `${frame.inferenceMs.toFixed(1)}ms` : '-'}
         />
         {spellActive && (
           <DiagnosticRow label="Ring buffer" value={`${spell.ringBuffer.size()} frames`} />
@@ -421,7 +421,7 @@ function ToastNotification({ toast, onTap }: { toast: SpellToast; onTap: () => v
     FORM_BENCHMARK: '✓',
     MECHANICAL_WATCH: '⚠',
     TECHNICAL_CONCERN: '⚠️',
-    DATA_SUPPRESSED: '—',
+    DATA_SUPPRESSED: '-',
     BENCHMARK_PENDING: '⏳',
     ERROR: '✗',
   };
@@ -503,7 +503,7 @@ function DeliveryLogPanel({
 function tripodSideFor(bowlingArm: BowlingArm | null): string {
   if (bowlingArm === 'RIGHT') return "bowler's left side";
   if (bowlingArm === 'LEFT') return "bowler's right side";
-  return 'bowling arm not set on this athlete — front leg side unknown';
+  return 'bowling arm not set on this athlete (front leg side unknown)';
 }
 
 function AlignmentOverlay({
@@ -550,7 +550,7 @@ function AlignmentOverlay({
         <>
           <DiagnosticRow
             label="Roll"
-            value={reading ? `${reading.roll.toFixed(1)}°` : '—'}
+            value={reading ? `${reading.roll.toFixed(1)}°` : '-'}
             isError={reading !== null && !rollOk}
           />
           <DiagnosticRow

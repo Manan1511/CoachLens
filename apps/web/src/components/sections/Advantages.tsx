@@ -6,7 +6,7 @@ import { useApproachScroll } from '@/hooks/useApproachScroll';
 import { PoseRunningSkeleton } from '@/components/ui/PoseRunningSkeleton';
 import type { Advantage } from '@/types';
 
-const SLIDE_VH = 120;
+const SLIDE_VH = 220;
 
 /** Regroups the flattened list back into its three original pillars
  *  (Measured / Compared / Coach-led) — one pinned slide per group. */
