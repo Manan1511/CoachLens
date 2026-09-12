@@ -1,6 +1,6 @@
 # Product Requirements Document (PRD) & Technical Specification
 
-**Product Name:** Kinetix Video Coach  
+**Product Name:** CoachLens  
 **System Classification:** AI-Assisted Quantitative 2D Biomechanical Review Assistant  
 **Target Domain:** Fast Bowling Stride Analysis (Grassroots Cricket)  
 **Version:** 7.2 (Production Architecture & AI Context Freeze)  
@@ -11,7 +11,7 @@
 ## 1. System Prompt & Context Mandate (For AI Models)
 
 > **AI INGESTION DIRECTIVE:**  
-> Kinetix is a **quantitative 2D video-review assistant** for cricket fast bowling, **NOT** a medical diagnostic tool or an injury prediction engine.  
+> CoachLens is a **quantitative 2D video-review assistant** for cricket fast bowling, **NOT** a medical diagnostic tool or an injury prediction engine.  
 > 
 > **Core System Invariants:**
 > 1. **No Medical / Injury Claims:** Never compute "injury probability," "damage risk," or "clinical severity." All flags represent *statistical mechanical deviations* relative to personal baselines.
@@ -268,7 +268,7 @@ def evaluate_delivery_deviation(
 | **FFS Temporal Accuracy** | <= 33ms (60 FPS) / <= 17ms (120 FPS) | Multi-cue detector compared to manual biomechanist ground truth. |
 | **Knee Angle MAE** | MAE <= 4.0 deg | Evaluated on 6 held-out unseen bowlers against Kinovea annotations. |
 | **Trunk Tilt MAE** | MAE <= 3.5 deg | Evaluated on 6 held-out unseen bowlers against Kinovea annotations. |
-| **Decision Concordance**| Concordance > 80% | Agreement between Kinetix status and accredited coach classification. |
+| **Decision Concordance**| Concordance > 80% | Agreement between CoachLens status and accredited coach classification. |
 | **False Burden** | Coach Dismissal Rate < 25% | Percentage of flags dismissed across 30 consecutive deliveries. |
 
 ---

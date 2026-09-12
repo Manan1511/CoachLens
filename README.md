@@ -1,8 +1,8 @@
-# CoachLens (Kinetix Video Coach)
+# CoachLens
 
-AI-assisted quantitative 2D biomechanical review assistant for fast bowling stride analysis (grassroots cricket). See [`Kinetix_PRD.md`](Kinetix_PRD.md) and [`Kinetix_PRD_System_Specification.pdf`](Kinetix_PRD_System_Specification.pdf) for the full product/technical spec — this README covers repo layout and team workflow.
+AI-assisted quantitative 2D biomechanical review assistant for fast bowling stride analysis (grassroots cricket). See [`CoachLens_PRD.md`](CoachLens_PRD.md) and [`CoachLens_PRD_System_Specification.pdf`](CoachLens_PRD_System_Specification.pdf) for the full product/technical spec — this README covers repo layout and team workflow.
 
-> Kinetix is a **quantitative coaching tool**, not a medical/injury diagnostic system. Keep that boundary in mind when naming code, fields, and UI copy (see PRD §1).
+> CoachLens is a **quantitative coaching tool**, not a medical/injury diagnostic system. Keep that boundary in mind when naming code, fields, and UI copy (see PRD §1).
 
 ## Architecture at a glance
 
@@ -60,8 +60,8 @@ coachlens/
 │   ├── workflows/             # CI: lint, test, build per service
 │   └── PULL_REQUEST_TEMPLATE.md
 │
-├── Kinetix_PRD.md
-├── Kinetix_PRD_System_Specification.pdf
+├── CoachLens_PRD.md
+├── CoachLens_PRD_System_Specification.pdf
 └── README.md
 ```
 
@@ -96,4 +96,4 @@ Adjust the exact tree once implementation starts, but keep the **Layer 1 / Layer
 
 ### Documentation
 - Record any architecture-affecting decision (e.g., swapping RTMPose for MediaPipe, changing the baseline triangulation formula) as an ADR in `docs/adr/`.
-- Keep `Kinetix_PRD.md` as the single source of truth for product behavior; if implementation diverges from the PRD, update the PRD in the same PR rather than letting docs drift.
+- Keep `CoachLens_PRD.md` as the single source of truth for product behavior; if implementation diverges from the PRD, update the PRD in the same PR rather than letting docs drift.
