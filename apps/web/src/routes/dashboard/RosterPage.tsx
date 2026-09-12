@@ -31,7 +31,7 @@ export function RosterPage() {
   const { data: rows, loading, error } = useAsync(loadRoster, []);
 
   return (
-    <div className="mx-auto max-w-[42rem]">
+    <div>
       <h1 className="mb-xs text-h2">Roster</h1>
       <p className="mb-lg text-ink-secondary">Athletes across your sessions.</p>
 
@@ -39,7 +39,7 @@ export function RosterPage() {
       {error && <p className="text-status-red">Couldn't load the roster.</p>}
 
       {rows && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col">
           {rows.map((row) => (
             <AthleteCard
               key={row.athlete.id}

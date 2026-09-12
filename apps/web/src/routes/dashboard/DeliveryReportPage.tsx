@@ -29,7 +29,7 @@ export function DeliveryReportPage() {
   const isSuppressed = verdict.status === 'DATA_SUPPRESSED';
 
   return (
-    <div className="mx-auto max-w-[42rem]">
+    <div>
       <Link to="/app" className="mb-md inline-block text-small text-ink-dim hover:text-ink">
         ← Roster
       </Link>
@@ -38,7 +38,7 @@ export function DeliveryReportPage() {
         {report.report_id}
       </p>
 
-      <div className="flex flex-col gap-md">
+      <div className="flex flex-col">
         <VerdictCard verdict={verdict} />
 
         {!isSuppressed && (

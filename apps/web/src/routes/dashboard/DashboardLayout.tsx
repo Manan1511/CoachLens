@@ -2,63 +2,60 @@ import { Navigate, NavLink, Outlet } from 'react-router';
 import { LogoMark } from '@/components/icons';
 import { useCoach } from '@/lib/auth/mock-auth';
 
-/** The dashboard shell: a persistent sidebar (roster link, coach identity,
- *  sign out) and a content outlet. Deliberately not the marketing page's
- *  visual language — see DESIGN.md §7. No Lenis, no GSAP, no scroll
- *  choreography; native scroll, instant interaction.
- *
- *  Mobile-first: below the `sm` breakpoint the sidebar collapses into a
- *  slim top bar — there's only one nav item today (Roster), so a drawer
- *  would be more chrome than the content justifies. */
+/** The dashboard shell: a floating top nav (not a sidebar) and a full-width
+ *  content outlet. Deliberately not the marketing page's visual language —
+ *  see DESIGN.md §7 — but it borrows the marketing nav's one proven
+ *  pattern: a detached pill bar rather than an edge-to-edge one, which
+ *  reads lighter than a docked toolbar. No Lenis, no GSAP, no scroll
+ *  choreography; native scroll, instant interaction. */
 export function DashboardLayout() {
   const { coach, signOut } = useCoach();
 
   if (!coach) return <Navigate to="/app/login" replace />;
 
   return (
-    <div className="flex min-h-screen flex-col bg-canvas text-ink sm:flex-row">
-      <aside className="flex shrink-0 flex-row items-center justify-between border-b border-line px-md py-3 sm:w-60 sm:flex-col sm:items-stretch sm:justify-start sm:border-b-0 sm:border-r sm:py-lg">
-        <NavLink
-          to="/"
-          className="flex items-center gap-2.5 text-body text-ink sm:mb-xl"
-          aria-label="Back to CoachLens site"
-        >
-          <LogoMark className="size-5 shrink-0" />
-          <span className="font-heading font-semibold tracking-[-0.02em]">
-            <span className="font-normal">Coach</span>Lens
-          </span>
-        </NavLink>
+    <div className="min-h-screen bg-canvas text-ink">
+      <header className="fixed inset-x-0 top-4 z-1000 flex justify-center px-md">
+        <nav className="flex w-full max-w-[52rem] items-center justify-between gap-md rounded-full border border-line bg-glass px-md py-2.5 backdrop-blur-[20px]">
+          <NavLink
+            to="/"
+            className="flex shrink-0 items-center gap-2 text-body text-ink"
+            aria-label="Back to CoachLens site"
+          >
+            <LogoMark className="size-5 shrink-0" />
+            <span className="hidden font-heading font-semibold tracking-[-0.02em] sm:inline">
+              <span className="font-normal">Coach</span>Lens
+            </span>
+          </NavLink>
 
-        <nav className="flex flex-row gap-1 sm:flex-col">
           <NavLink
             to="/app"
             end
             className={({ isActive }) =>
-              `rounded-md px-3 py-2 text-small font-medium transition-colors duration-200 ${
-                isActive ? 'bg-white/6 text-ink' : 'text-ink-secondary hover:text-ink'
+              `rounded-full px-3.5 py-1.5 text-small font-medium transition-colors duration-200 ${
+                isActive ? 'bg-white/8 text-ink' : 'text-ink-secondary hover:text-ink'
               }`
             }
           >
             Roster
           </NavLink>
+
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="hidden truncate text-small text-ink-secondary sm:inline">
+              {coach.name}
+            </span>
+            <button
+              type="button"
+              onClick={signOut}
+              className="text-caption font-semibold uppercase tracking-[0.08em] text-ink-dim transition-colors duration-200 hover:text-ink"
+            >
+              Sign out
+            </button>
+          </div>
         </nav>
+      </header>
 
-        <div className="sm:mt-auto sm:border-t sm:border-line sm:pt-md">
-          <p className="mb-0.5 hidden text-small font-medium text-ink sm:block">{coach.name}</p>
-          <p className="mb-sm hidden truncate text-caption text-ink-dim sm:block">
-            {coach.email}
-          </p>
-          <button
-            type="button"
-            onClick={signOut}
-            className="text-caption font-semibold uppercase tracking-[0.08em] text-ink-dim transition-colors duration-200 hover:text-ink"
-          >
-            Sign out
-          </button>
-        </div>
-      </aside>
-
-      <main className="min-w-0 flex-1 px-md py-md sm:px-xl sm:py-lg">
+      <main className="mx-auto max-w-[42rem] px-md pt-24 pb-2xl sm:px-0 sm:pt-28">
         <Outlet />
       </main>
     </div>

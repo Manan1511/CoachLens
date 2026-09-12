@@ -10,7 +10,9 @@ const WINDOW_LABELS: Record<Verdict['window_pattern'], string> = {
 
 /** "Why was this flagged" — the numbers behind the headline. Collapsed by
  *  default everywhere except TECHNICAL_CONCERN, where the PRD's
- *  transparency requirement is load-bearing for a real coach decision. */
+ *  transparency requirement is load-bearing for a real coach decision.
+ *  A plain disclosure, not a bordered panel — a top hairline is enough to
+ *  separate it from the verdict above. */
 export function EvidenceDisclosure({
   kinematics,
   baselines,
@@ -25,11 +27,11 @@ export function EvidenceDisclosure({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="rounded-md border border-line bg-surface">
+    <div className="border-t border-line pt-md">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between px-md py-3 text-left"
+        className="flex w-full items-center justify-between text-left"
       >
         <span className="text-small font-medium text-ink">Show the evidence</span>
         <span className="text-caption uppercase tracking-[0.08em] text-ink-dim">
@@ -38,7 +40,7 @@ export function EvidenceDisclosure({
       </button>
 
       {open && (
-        <div className="grid grid-cols-2 gap-x-md gap-y-3 border-t border-line px-md py-md text-small max-mobile:grid-cols-1">
+        <div className="mt-md grid grid-cols-2 gap-x-md gap-y-3 text-small max-mobile:grid-cols-1">
           <Row label="Observed angle" value={formatDeg(kinematics.front_knee_angle_deg)} />
           <Row
             label="Confidence"

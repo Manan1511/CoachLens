@@ -37,7 +37,7 @@ export function AthleteDetailPage() {
   const isMinor = age !== null && age < 18;
 
   return (
-    <div className="mx-auto max-w-[42rem]">
+    <div>
       <Link to="/app" className="mb-md inline-block text-small text-ink-dim hover:text-ink">
         ← Roster
       </Link>
@@ -52,10 +52,10 @@ export function AthleteDetailPage() {
       </div>
 
       <section className="mb-lg">
-        <h2 className="mb-sm text-caption font-bold uppercase tracking-[0.1em] text-ink-dim">
+        <h2 className="mb-1 text-caption font-bold uppercase tracking-[0.1em] text-ink-dim">
           Baseline
         </h2>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col">
           {METRICS.map((metric, i) => (
             <BaselinePanel
               key={metric}

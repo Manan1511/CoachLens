@@ -4,15 +4,9 @@ import { StatusBadge } from './StatusBadge';
 import type { Athlete, DeliveryStatus } from '@/lib/api/types';
 import { ageFromDob, formatDate } from '@/lib/stats';
 
-/** Deliberately minimal — name, an age/consent chip, last-session date, one
- *  status chip. No metrics here at all; that's what the athlete page and
- *  delivery report are for. See DESIGN.md §7 on progressive disclosure.
- *
- *  Two fixed rows rather than one crowded flex-wrap line: name + status on
- *  top, last-session date + consent chip below. A single row that tries to
- *  fit name, consent badge, and status badge together has no good outcome
- *  at narrow widths — something always ends up either overlapping or
- *  truncated to a couple of letters. */
+/** A plain divided row, not a bordered card — the roster is a list, not a
+ *  grid of tiles. Two fixed rows (name + status, then date + consent) so
+ *  nothing crowds or overlaps at narrow widths; see DESIGN.md §7. */
 export function AthleteCard({
   athlete,
   lastSessionDate,
@@ -28,7 +22,7 @@ export function AthleteCard({
   return (
     <Link
       to={`/app/athletes/${athlete.id}`}
-      className="block rounded-md border border-line bg-surface px-md py-4 transition-colors duration-200 hover:border-line-strong hover:bg-surface-hover"
+      className="-mx-3 block border-b border-line px-3 py-4 transition-colors duration-200 first:pt-0 last:border-b-0 hover:bg-white/3"
     >
       <div className="mb-1 flex items-center justify-between gap-sm">
         <span className="min-w-0 flex-1 truncate text-body font-medium text-ink">

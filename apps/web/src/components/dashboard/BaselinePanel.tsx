@@ -53,7 +53,7 @@ export function BaselinePanel({
   };
 
   return (
-    <div className="rounded-md border border-line bg-surface px-md py-3.5">
+    <div className="-mx-3 border-b border-line px-3 py-3.5 last:border-b-0">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -73,7 +73,7 @@ export function BaselinePanel({
       </button>
 
       {open && (
-        <div className="mt-md border-t border-line pt-md">
+        <div className="mt-md">
           <label className="mb-2 block text-small text-ink-secondary">
             Angle readings from 8–10 un-fatigued benchmark deliveries (comma or line separated)
           </label>
