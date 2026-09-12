@@ -2,12 +2,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { api } from '@/lib/api/client';
 import { useAsync } from '@/hooks/useAsync';
-import {
-  usePoseLandmarker,
-  POSE_LANDMARK,
-  benchmarkPoseDelegates,
-  type DelegateBenchResult,
-} from '@/lib/pose/usePoseLandmarker';
+import { usePoseLandmarker, POSE_LANDMARK } from '@/lib/pose/usePoseLandmarker';
 import { useSessionPool, type PoolMember } from '@/lib/pose/useSessionPool';
 import { useDeviceOrientation } from '@/lib/pose/useDeviceOrientation';
 import type { Athlete, BowlingArm } from '@/lib/api/types';
@@ -20,17 +15,27 @@ import type { Athlete, BowlingArm } from '@/lib/api/types';
  *  persistence).
  *
  *  Milestone 0.5 (real WASM inference cost on target hardware) is done -
- *  see CAPTURE_PLAN.md. The diagnostic readout stays visible on the capture
- *  screen since it's cheap to keep and useful for any future regression
- *  (e.g. a browser update changing WASM/GPU-delegate behavior). */
+ *  see CAPTURE_PLAN.md. The diagnostic readout (video/landmarks/inference
+ *  time) stays visible since it's cheap to keep and useful for any future
+ *  regression. The CPU-vs-GPU delegate bench that lived here briefly during
+ *  that milestone's investigation was removed once capture itself was
+ *  working - it was debug tooling, not something a coach needs on this
+ *  screen; the desktop-hardware finding it produced (GPU ~3x faster than CPU
+ *  when it actually engages) is recorded in CAPTURE_PLAN.md, and the
+ *  still-open question of whether the phone's GPU delegate is really
+ *  engaging can be re-run via camera-debug.html-style ad hoc script next
+ *  time the device is connected, rather than carrying the tooling in
+ *  production code indefinitely. */
 export function CapturePage() {
-  const { pool, resolving, error: poolError, setPoolFromAthletes, addToPool } = useSessionPool();
+  const { pool, resolving, error: poolError, setPoolFromAthletes, addToPool, clearPool } = useSessionPool();
 
   if (pool.length === 0) {
     return <SessionPoolSetup onStart={setPoolFromAthletes} resolving={resolving} error={poolError} />;
   }
 
-  return <CaptureScreen pool={pool} onAddToPool={addToPool} poolResolving={resolving} />;
+  return (
+    <CaptureScreen pool={pool} onAddToPool={addToPool} onEndSession={clearPool} poolResolving={resolving} />
+  );
 }
 
 function SessionPoolSetup({
@@ -118,17 +123,19 @@ function SessionPoolSetup({
 function CaptureScreen({
   pool,
   onAddToPool,
+  onEndSession,
   poolResolving,
 }: {
   pool: PoolMember[];
   onAddToPool: (athlete: Athlete) => void;
+  onEndSession: () => void;
   poolResolving: boolean;
 }) {
   const [selectedAthleteId, setSelectedAthleteId] = useState<string>(pool[0]?.athlete.id ?? '');
   const [showAddPicker, setShowAddPicker] = useState(false);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
   const { videoRef, videoSize, frame, cameraError, modelError, ready } = usePoseLandmarker(true);
   const orientation = useDeviceOrientation();
-  const [bench, setBench] = useState<[DelegateBenchResult, DelegateBenchResult] | 'running' | null>(null);
 
   const selected = pool.find((m) => m.athlete.id === selectedAthleteId) ?? pool[0];
   const rightKnee = frame?.landmarks[POSE_LANDMARK.rightKnee];
@@ -173,11 +180,59 @@ function CaptureScreen({
           >
             + Add
           </button>
+          {/* Pushed to the far end of the scroll strip rather than given its
+              own prominent spot - ending the session is rare and a
+              one-tap-to-undo-everything action shouldn't be the easiest
+              thing to hit. Confirmation sheet below is the actual guard. */}
+          <button
+            type="button"
+            onClick={() => setShowEndConfirm(true)}
+            className="ml-auto shrink-0 rounded-full border border-line px-4 py-3 text-body text-ink-dim"
+          >
+            End session
+          </button>
         </div>
         {selected && (
           <p className="text-h3 font-medium text-ink">{selected.athlete.name}</p>
         )}
       </div>
+
+      {showEndConfirm && (
+        <div
+          className="absolute inset-0 z-10 flex items-end bg-black/70"
+          onClick={() => setShowEndConfirm(false)}
+        >
+          <div
+            className="w-full rounded-t-2xl border-t border-line bg-canvas p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="mb-1 text-body font-medium text-ink">End this session?</p>
+            <p className="mb-md text-small text-ink-dim">
+              {/* Only the local pool selection is lost - the deliveries and
+                  sessions already recorded for these athletes stay exactly as
+                  they are server-side. This is un-picking who's at the nets,
+                  not deleting anything. */}
+              You'll need to re-pick who's at the nets to capture again. Nothing already recorded is affected.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowEndConfirm(false)}
+                className="flex-1 rounded-full border border-line px-4 py-3 text-body font-medium text-ink"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onEndSession}
+                className="flex-1 rounded-full bg-status-red/16 px-4 py-3 text-body font-semibold text-status-red"
+              >
+                End session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="absolute left-4 top-4 rounded-xl border border-line bg-black/55 p-3 backdrop-blur-sm">
         <DiagnosticRow label="Video" value={videoSize ? `${videoSize.width}x${videoSize.height}` : '—'} />
@@ -193,37 +248,6 @@ function CaptureScreen({
         {!ready && !cameraError && !modelError && <DiagnosticRow label="Status" value="Loading…" />}
         {cameraError && <DiagnosticRow label="Camera error" value={cameraError} isError />}
         {modelError && <DiagnosticRow label="Model error" value={modelError} isError />}
-
-        {/* CAPTURE_PLAN.md Milestone 0.5's CPU-vs-GPU delegate comparison,
-            on-demand rather than automatic - see benchmarkPoseDelegates'
-            own comment for why. */}
-        {ready && (
-          <button
-            type="button"
-            disabled={bench === 'running'}
-            onClick={async () => {
-              setBench('running');
-              const video = videoRef.current;
-              if (!video) return;
-              setBench(await benchmarkPoseDelegates(video));
-            }}
-            className="mt-2 w-full rounded-full border border-line px-3 py-2 text-caption font-semibold text-ink disabled:opacity-40"
-          >
-            {bench === 'running' ? 'Running bench…' : 'Run CPU/GPU bench'}
-          </button>
-        )}
-        {bench && bench !== 'running' && (
-          <>
-            <DiagnosticRow
-              label="CPU delegate"
-              value={`${bench[0].avgMs.toFixed(1)}ms avg (${bench[0].minMs.toFixed(1)}–${bench[0].maxMs.toFixed(1)})`}
-            />
-            <DiagnosticRow
-              label="GPU delegate"
-              value={`${bench[1].avgMs.toFixed(1)}ms avg (${bench[1].minMs.toFixed(1)}–${bench[1].maxMs.toFixed(1)})`}
-            />
-          </>
-        )}
       </div>
 
       <AlignmentOverlay bowlingArm={selected?.athlete.bowling_arm ?? null} orientation={orientation} />

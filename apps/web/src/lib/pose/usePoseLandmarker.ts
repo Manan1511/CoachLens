@@ -35,52 +35,117 @@ export const POSE_LANDMARK = {
   rightWrist: 16,
 } as const;
 
+/** Ordered best-first. Walked top to bottom until one actually starts.
+ *
+ *  `ideal` looks like it should make this unnecessary - by spec it's a
+ *  preference, not a requirement - but it isn't a safety net on Windows.
+ *  Chromium accepts the format during negotiation, then fails when it tries
+ *  to actually start the capture graph, and surfaces that as
+ *  `NotReadableError: Could not start video source` rather than
+ *  `OverconstrainedError`. The message reads like "another app has your
+ *  webcam", so it sends you hunting for a phantom process holding the device
+ *  (it cost a long detour through Windows privacy settings and Device
+ *  Manager before the real cause turned up).
+ *
+ *  Confirmed on an HP True Vision FHD laptop webcam, which advertises FHD
+ *  but cold-starts only at 640x480: every 1080p request failed, plain
+ *  `{ video: true }` succeeded immediately. A phone's rear camera takes the
+ *  first rung, so nothing is lost where the resolution actually matters. */
+const CONSTRAINT_LADDER: MediaStreamConstraints[] = [
+  { video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false },
+  { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
+  { video: { facingMode: 'environment' }, audio: false },
+  { video: true, audio: false },
+];
+
+/** Errors that mean "no camera for you, ever" - retrying or relaxing
+ *  constraints just delays an honest message to the coach. Anything else is
+ *  worth trying the next rung for. */
+const TERMINAL_ERRORS = new Set(['NotAllowedError', 'SecurityError', 'NotFoundError']);
+
+/** How long to keep the camera open after the last consumer goes away.
+ *  Only needs to outlast React's synchronous unmount/remount gap. */
+const CAMERA_RELEASE_DELAY_MS = 400;
+
+/** The camera is a single exclusive device, so it's owned here at module
+ *  scope and shared across mounts rather than acquired per-mount. Two real
+ *  failures on real hardware forced this, both of which present as
+ *  `NotReadableError: Could not start video source` - a message that reads
+ *  like "another app has your webcam" and in neither case was:
+ *
+ *  1. React StrictMode mounts, unmounts and remounts every effect in dev.
+ *     Per-mount acquire/release raced itself: cleanup ran while the first
+ *     getUserMedia was still in flight (so it had no stream to stop yet), the
+ *     remount opened a second one concurrently, and the first then stopped
+ *     its tracks - tearing the shared device session down under the second.
+ *  2. Serialising the two fixed the ordering but not the symptom, because
+ *     `track.stop()` returns to JS long before the browser process has
+ *     actually closed the device underneath. Reopening in the next tick -
+ *     which is exactly what a StrictMode remount does - still fails.
+ *
+ *  Hence: acquire once, hand the same stream to every mount, and release on
+ *  a short timer so a remount inside that window reuses the live stream
+ *  instead of churning the device at all. */
+let sharedStream: MediaStream | null = null;
+let pendingAcquire: Promise<MediaStream> | null = null;
+let releaseTimer: ReturnType<typeof setTimeout> | null = null;
+
+function acquireCamera(): Promise<MediaStream> {
+  if (releaseTimer !== null) {
+    clearTimeout(releaseTimer);
+    releaseTimer = null;
+  }
+  if (sharedStream?.getVideoTracks().some((t) => t.readyState === 'live')) {
+    return Promise.resolve(sharedStream);
+  }
+  pendingAcquire ??= openWithRetry()
+    .then((s) => {
+      sharedStream = s;
+      return s;
+    })
+    .catch((err) => {
+      pendingAcquire = null; // let the next mount retry rather than latching the failure
+      throw err;
+    });
+  return pendingAcquire;
+}
+
+/** Walks CONSTRAINT_LADDER and keeps the first source that actually starts.
+ *  Each rung is a genuine cold open: a device that refuses one format can
+ *  still be perfectly happy on the next one down. */
+async function openWithRetry(): Promise<MediaStream> {
+  let lastErr: unknown;
+
+  for (const [rung, constraints] of CONSTRAINT_LADDER.entries()) {
+    try {
+      return await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (err) {
+      lastErr = err;
+      const name = (err as DOMException)?.name;
+      if (TERMINAL_ERRORS.has(name)) throw err;
+      console.warn('[camera] ladder rung %d failed (%s) — trying a simpler source', rung, name);
+      // A failed start can leave the device briefly busy; let it settle
+      // before asking again, or the next rung inherits the same failure.
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  }
+
+  throw lastErr;
+}
+
+function releaseCamera() {
+  if (releaseTimer !== null) clearTimeout(releaseTimer);
+  releaseTimer = setTimeout(() => {
+    releaseTimer = null;
+    sharedStream?.getTracks().forEach((t) => t.stop());
+    sharedStream = null;
+    pendingAcquire = null;
+  }, CAMERA_RELEASE_DELAY_MS);
+}
+
 export interface PoseFrame {
   landmarks: NormalizedLandmark[];
   inferenceMs: number;
-}
-
-export interface DelegateBenchResult {
-  delegate: 'CPU' | 'GPU';
-  avgMs: number;
-  minMs: number;
-  maxMs: number;
-}
-
-/** CAPTURE_PLAN.md Milestone 0.5's still-open CPU-vs-GPU comparison,
- *  as an on-demand function rather than something that runs automatically -
- *  it briefly opens a second PoseLandmarker instance and steals a few frames
- *  from the live video, which isn't something to do every render. Runs both
- *  delegates against the *same* live video element so the comparison isn't
- *  confounded by the scene changing between runs. */
-export async function benchmarkPoseDelegates(
-  video: HTMLVideoElement,
-  iterations = 15,
-): Promise<[DelegateBenchResult, DelegateBenchResult]> {
-  async function bench(delegate: 'CPU' | 'GPU'): Promise<DelegateBenchResult> {
-    const vision = await FilesetResolver.forVisionTasks(WASM_BASE);
-    const landmarker = await PoseLandmarker.createFromOptions(vision, {
-      baseOptions: { modelAssetPath: MODEL_PATH, delegate },
-      runningMode: 'VIDEO',
-      numPoses: 1,
-    });
-    landmarker.detectForVideo(video, performance.now()); // warm-up, uncounted
-    const times: number[] = [];
-    for (let i = 0; i < iterations; i++) {
-      const t0 = performance.now();
-      landmarker.detectForVideo(video, t0);
-      times.push(performance.now() - t0);
-    }
-    landmarker.close();
-    return {
-      delegate,
-      avgMs: times.reduce((a, b) => a + b, 0) / times.length,
-      minMs: Math.min(...times),
-      maxMs: Math.max(...times),
-    };
-  }
-
-  return [await bench('CPU'), await bench('GPU')];
 }
 
 interface UsePoseLandmarkerResult {
@@ -114,32 +179,34 @@ export function usePoseLandmarker(active: boolean): UsePoseLandmarkerResult {
   useEffect(() => {
     if (!active) return;
     let cancelled = false;
-    let stream: MediaStream | null = null;
+    let landmarker: PoseLandmarker | null = null;
 
-    async function setup() {
+    (async () => {
+      let stream: MediaStream;
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
-          audio: false,
-        });
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        const video = videoRef.current;
-        if (!video) return;
-        video.srcObject = stream;
-        await video.play();
-        const settings = stream.getVideoTracks()[0].getSettings();
-        setVideoSize({ width: settings.width ?? 0, height: settings.height ?? 0 });
+        stream = await acquireCamera();
       } catch (err) {
-        setCameraError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setCameraError(err instanceof Error ? err.message : String(err));
         return;
       }
+      if (cancelled) return;
+
+      const video = videoRef.current;
+      if (!video) return;
+      video.srcObject = stream;
+      // play() rejects if the element is torn down mid-call; that's a
+      // teardown, not a camera failure, so it must not surface as one.
+      try {
+        await video.play();
+      } catch {
+        if (cancelled) return;
+      }
+      const settings = stream.getVideoTracks()[0].getSettings();
+      if (!cancelled) setVideoSize({ width: settings.width ?? 0, height: settings.height ?? 0 });
 
       try {
         const vision = await FilesetResolver.forVisionTasks(WASM_BASE);
-        const landmarker = await PoseLandmarker.createFromOptions(vision, {
+        landmarker = await PoseLandmarker.createFromOptions(vision, {
           baseOptions: { modelAssetPath: MODEL_PATH, delegate: 'GPU' },
           runningMode: 'VIDEO',
           numPoses: 1,
@@ -151,18 +218,16 @@ export function usePoseLandmarker(active: boolean): UsePoseLandmarkerResult {
         landmarkerRef.current = landmarker;
         setReady(true);
       } catch (err) {
-        setModelError(err instanceof Error ? err.message : String(err));
+        if (!cancelled) setModelError(err instanceof Error ? err.message : String(err));
       }
-    }
-
-    setup();
+    })();
 
     return () => {
       cancelled = true;
       setReady(false);
-      landmarkerRef.current?.close();
       landmarkerRef.current = null;
-      stream?.getTracks().forEach((t) => t.stop());
+      landmarker?.close();
+      releaseCamera();
     };
   }, [active]);
 

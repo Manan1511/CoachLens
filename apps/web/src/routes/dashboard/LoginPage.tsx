@@ -101,7 +101,12 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas px-[var(--container-padding)]">
+    // items-center still centers a card that fits; py-2xl + overflow-y-auto
+    // means a card taller than the viewport (sign-up's extra field) scrolls
+    // into view with breathing room instead of ever sitting flush against
+    // the top edge - min-h-screen alone doesn't guarantee that padding once
+    // content exceeds 100vh, since the container just grows to fit content.
+    <div className="flex min-h-screen items-center justify-center overflow-y-auto bg-canvas px-[var(--container-padding)] py-2xl">
       <div className="w-full max-w-[24rem]">
         <Link
           to="/"
@@ -123,7 +128,7 @@ export function LoginPage() {
           <button
             type="button"
             onClick={() => switchMode('sign-in')}
-            className={`flex-1 rounded-full py-1.5 text-caption font-semibold uppercase tracking-[0.08em] transition-colors ${
+            className={`flex-1 rounded-full py-1.5 text-caption font-semibold uppercase tracking-[0.08em] transition-colors duration-200 ${
               mode === 'sign-in' ? 'bg-white/8 text-ink' : 'text-ink-secondary hover:text-ink'
             }`}
           >
@@ -132,7 +137,7 @@ export function LoginPage() {
           <button
             type="button"
             onClick={() => switchMode('sign-up')}
-            className={`flex-1 rounded-full py-1.5 text-caption font-semibold uppercase tracking-[0.08em] transition-colors ${
+            className={`flex-1 rounded-full py-1.5 text-caption font-semibold uppercase tracking-[0.08em] transition-colors duration-200 ${
               mode === 'sign-up' ? 'bg-white/8 text-ink' : 'text-ink-secondary hover:text-ink'
             }`}
           >
@@ -166,20 +171,35 @@ export function LoginPage() {
           />
         </label>
 
-        {mode === 'sign-up' && (
-          <label className="mb-lg block">
-            <span className="mb-1 block text-small text-ink-secondary">Confirm password</span>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={6}
-              autoComplete="new-password"
-              className="w-full rounded-md border border-line bg-canvas px-3 py-2 text-body text-ink outline-none focus-visible:border-line-strong"
-            />
-          </label>
-        )}
+        {/* grid-rows 0fr/1fr is the CSS trick for animating to/from "auto"
+            height, which a plain height/max-height transition can't do
+            without guessing a pixel value. Confirm-password mounting only in
+            sign-up mode used to make the whole card snap taller instantly;
+            this grows it open instead. The inner div needs its own
+            min-h-0/overflow-hidden or the grid row won't actually collapse -
+            a flex or block child clamps to content size regardless of the
+            row track. */}
+        <div
+          className={`grid transition-[grid-template-rows] duration-200 ease-out ${
+            mode === 'sign-up' ? 'mb-lg grid-rows-[1fr]' : 'grid-rows-[0fr]'
+          }`}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <label className="block pt-sm">
+              <span className="mb-1 block text-small text-ink-secondary">Confirm password</span>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required={mode === 'sign-up'}
+                minLength={6}
+                autoComplete="new-password"
+                tabIndex={mode === 'sign-up' ? 0 : -1}
+                className="w-full rounded-md border border-line bg-canvas px-3 py-2 text-body text-ink outline-none focus-visible:border-line-strong"
+              />
+            </label>
+          </div>
+        </div>
 
         {error && <p className="mb-sm text-small text-status-red">{error}</p>}
 
