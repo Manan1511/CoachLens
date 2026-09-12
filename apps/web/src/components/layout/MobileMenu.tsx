@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Link } from 'react-router';
 import { NAV_LINKS } from '@/content/nav';
 import { getLenis } from '@/lib/lenis';
 
@@ -47,6 +48,14 @@ export function MobileMenu({
           {link.label}
         </a>
       ))}
+
+      <Link
+        to="/app"
+        tabIndex={open ? 0 : -1}
+        className="mobile-menu-link block py-2 font-heading text-menu-link font-normal text-ink-secondary hover:text-accent"
+      >
+        Coach sign in
+      </Link>
     </div>
   );
 }
