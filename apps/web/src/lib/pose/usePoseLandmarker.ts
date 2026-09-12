@@ -40,6 +40,49 @@ export interface PoseFrame {
   inferenceMs: number;
 }
 
+export interface DelegateBenchResult {
+  delegate: 'CPU' | 'GPU';
+  avgMs: number;
+  minMs: number;
+  maxMs: number;
+}
+
+/** CAPTURE_PLAN.md Milestone 0.5's still-open CPU-vs-GPU comparison,
+ *  as an on-demand function rather than something that runs automatically -
+ *  it briefly opens a second PoseLandmarker instance and steals a few frames
+ *  from the live video, which isn't something to do every render. Runs both
+ *  delegates against the *same* live video element so the comparison isn't
+ *  confounded by the scene changing between runs. */
+export async function benchmarkPoseDelegates(
+  video: HTMLVideoElement,
+  iterations = 15,
+): Promise<[DelegateBenchResult, DelegateBenchResult]> {
+  async function bench(delegate: 'CPU' | 'GPU'): Promise<DelegateBenchResult> {
+    const vision = await FilesetResolver.forVisionTasks(WASM_BASE);
+    const landmarker = await PoseLandmarker.createFromOptions(vision, {
+      baseOptions: { modelAssetPath: MODEL_PATH, delegate },
+      runningMode: 'VIDEO',
+      numPoses: 1,
+    });
+    landmarker.detectForVideo(video, performance.now()); // warm-up, uncounted
+    const times: number[] = [];
+    for (let i = 0; i < iterations; i++) {
+      const t0 = performance.now();
+      landmarker.detectForVideo(video, t0);
+      times.push(performance.now() - t0);
+    }
+    landmarker.close();
+    return {
+      delegate,
+      avgMs: times.reduce((a, b) => a + b, 0) / times.length,
+      minMs: Math.min(...times),
+      maxMs: Math.max(...times),
+    };
+  }
+
+  return [await bench('CPU'), await bench('GPU')];
+}
+
 interface UsePoseLandmarkerResult {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   videoSize: { width: number; height: number } | null;
