@@ -64,14 +64,79 @@ def test_get_rolling_history_deltas_chains_sessions_deliveries_verdicts(mock_db)
         elif name == "deliveries":
             _execute_returns(m.select.return_value.in_.return_value, [{"id": "DEL-1"}, {"id": "DEL-2"}])
         elif name == "verdicts":
-            chain_end = m.select.return_value.in_.return_value.eq.return_value.order.return_value.limit.return_value
+            chain_end = m.select.return_value.in_.return_value.eq.return_value.order.return_value
             # Stored newest-first (as queried); function should reverse to oldest-first.
-            _execute_returns(chain_end, [{"delta_deg": -14.0}, {"delta_deg": -13.0}])
+            _execute_returns(
+                chain_end,
+                [
+                    {"delivery_id": "DEL-2", "delta_deg": -14.0},
+                    {"delivery_id": "DEL-1", "delta_deg": -13.0},
+                ],
+            )
         return m
 
     mock_db.table.side_effect = table_side_effect
     deltas = repository.get_rolling_history_deltas("ATH-1", "front_knee_angle_deg")
     assert deltas == [-13.0, -14.0]
+
+
+def test_get_rolling_history_deltas_skips_data_suppressed_without_shrinking_window(mock_db):
+    """Regression test: a DATA_SUPPRESSED verdict (delta_deg is None) must
+    not consume one of the `limit` slots - it should be skipped entirely so
+    older valid deliveries still fill the window."""
+
+    def table_side_effect(name):
+        m = MagicMock()
+        if name == "sessions":
+            _execute_returns(m.select.return_value.eq.return_value, [{"id": "SES-1"}])
+        elif name == "deliveries":
+            _execute_returns(
+                m.select.return_value.in_.return_value,
+                [{"id": "DEL-1"}, {"id": "DEL-2"}, {"id": "DEL-3"}],
+            )
+        elif name == "verdicts":
+            chain_end = m.select.return_value.in_.return_value.eq.return_value.order.return_value
+            _execute_returns(
+                chain_end,
+                [
+                    {"delivery_id": "DEL-3", "delta_deg": None},  # DATA_SUPPRESSED - newest
+                    {"delivery_id": "DEL-2", "delta_deg": -9.0},
+                    {"delivery_id": "DEL-1", "delta_deg": -8.0},
+                ],
+            )
+        return m
+
+    mock_db.table.side_effect = table_side_effect
+    deltas = repository.get_rolling_history_deltas("ATH-1", "front_knee_angle_deg", limit=2)
+    assert deltas == [-8.0, -9.0]
+
+
+def test_get_rolling_history_deltas_dedupes_nudged_delivery_keeping_latest(mock_db):
+    """Regression test: a delivery re-evaluated via Nudge FFS has two verdict
+    rows (save_verdict inserts rather than replaces). Only the most recent
+    one should count, not both."""
+
+    def table_side_effect(name):
+        m = MagicMock()
+        if name == "sessions":
+            _execute_returns(m.select.return_value.eq.return_value, [{"id": "SES-1"}])
+        elif name == "deliveries":
+            _execute_returns(m.select.return_value.in_.return_value, [{"id": "DEL-1"}, {"id": "DEL-2"}])
+        elif name == "verdicts":
+            chain_end = m.select.return_value.in_.return_value.eq.return_value.order.return_value
+            _execute_returns(
+                chain_end,
+                [
+                    {"delivery_id": "DEL-2", "delta_deg": -10.0},  # DEL-2's nudged (latest) verdict
+                    {"delivery_id": "DEL-1", "delta_deg": -8.0},
+                    {"delivery_id": "DEL-2", "delta_deg": -9.0},  # DEL-2's original, pre-nudge verdict
+                ],
+            )
+        return m
+
+    mock_db.table.side_effect = table_side_effect
+    deltas = repository.get_rolling_history_deltas("ATH-1", "front_knee_angle_deg")
+    assert deltas == [-8.0, -10.0]
 
 
 def test_save_verdict_inserts_all_fields_and_returns_id(mock_db):

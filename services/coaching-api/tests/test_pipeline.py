@@ -97,13 +97,46 @@ def test_nudge_and_reevaluate_shifts_ffs_frame(monkeypatch, fake_repo):
     monkeypatch.setattr(
         repository, "get_delivery_frames", lambda delivery_id: (request.raw_keypoints, request.capture_metadata)
     )
-    monkeypatch.setattr(repository, "get_latest_verdict_for_delivery", lambda delivery_id: {"id": "verdict-uuid-1"})
+    original_ffs = pipeline.detect_ffs_frame(pipeline._filtered_or_raw(request.raw_keypoints, FPS))
+    monkeypatch.setattr(
+        repository, "get_latest_verdict_for_delivery", lambda delivery_id: {"id": "verdict-uuid-1", "event_frame": original_ffs}
+    )
     monkeypatch.setattr(repository, "get_athlete_id_for_delivery", lambda delivery_id: "ATH-1")
 
-    original_ffs = pipeline.detect_ffs_frame(pipeline._filtered_or_raw(request.raw_keypoints, FPS))
     report = pipeline.nudge_and_reevaluate("DEL-1", frame_delta=1)
 
     assert report.kinematics.ffs_frame == original_ffs + 1
+
+
+def test_nudge_and_reevaluate_is_cumulative_across_repeated_nudges(monkeypatch, fake_repo):
+    """Regression test: nudge must compose off the delivery's *current*
+    stored event_frame, not a freshly recomputed auto-detection - otherwise
+    every nudge in the same direction lands on the same frame."""
+    request = make_request()
+    monkeypatch.setattr(
+        repository, "get_delivery_frames", lambda delivery_id: (request.raw_keypoints, request.capture_metadata)
+    )
+    monkeypatch.setattr(repository, "get_athlete_id_for_delivery", lambda delivery_id: "ATH-1")
+    original_ffs = pipeline.detect_ffs_frame(pipeline._filtered_or_raw(request.raw_keypoints, FPS))
+
+    # First nudge: latest verdict reflects the auto-detected frame.
+    monkeypatch.setattr(
+        repository, "get_latest_verdict_for_delivery", lambda delivery_id: {"id": "v1", "event_frame": original_ffs}
+    )
+    first_report = pipeline.nudge_and_reevaluate("DEL-1", frame_delta=1)
+    assert first_report.kinematics.ffs_frame == original_ffs + 1
+
+    # Second nudge: latest verdict now reflects the *first* nudge's result
+    # (as it would in the real DB, since save_verdict persisted event_frame
+    # = original_ffs + 1). A second +1 nudge should move one further frame,
+    # not land back on original_ffs + 1.
+    monkeypatch.setattr(
+        repository,
+        "get_latest_verdict_for_delivery",
+        lambda delivery_id: {"id": "v2", "event_frame": first_report.kinematics.ffs_frame},
+    )
+    second_report = pipeline.nudge_and_reevaluate("DEL-1", frame_delta=1)
+    assert second_report.kinematics.ffs_frame == original_ffs + 2
 
 
 def test_nudge_and_reevaluate_raises_not_found_without_prior_verdict(monkeypatch, fake_repo):

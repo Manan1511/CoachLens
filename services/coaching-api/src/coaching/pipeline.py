@@ -156,20 +156,31 @@ def evaluate_delivery(request: DeliveryIngestionRequest) -> CoachingReport:
 
 def nudge_and_reevaluate(delivery_id: str, frame_delta: int) -> CoachingReport:
     """Re-runs the pipeline against a delivery's stored keypoints, but with
-    the FFS frame shifted by `frame_delta` (the [Nudge FFS Frame +/-1]
-    control, PRD §6.1) instead of auto-detected.
+    the FFS frame shifted by `frame_delta` from where it *currently* sits
+    (the [Nudge FFS Frame +/-1] control, PRD §6.1), not from a freshly
+    auto-detected frame - the control is a stateful, repeatable nudge (click
+    +1 twice, move two frames), so it must compose off the latest verdict's
+    stored event_frame rather than recomputing detect_ffs_frame from
+    scratch each time, which would make every nudge land on the same frame
+    (auto_frame + frame_delta) regardless of how many times it was clicked.
     """
     frames, capture_metadata = repository.get_delivery_frames(delivery_id)
-    if repository.get_latest_verdict_for_delivery(delivery_id) is None:
+    latest_verdict = repository.get_latest_verdict_for_delivery(delivery_id)
+    if latest_verdict is None:
         raise repository.NotFoundError(f"No prior verdict exists for delivery_id={delivery_id!r} to nudge.")
 
     filtered = _filtered_or_raw(frames, capture_metadata.fps)
-    auto_ffs_frame = detect_ffs_frame(filtered)
-    nudged_frame_number = auto_ffs_frame + frame_delta
+    current_frame_number = latest_verdict.get("event_frame")
+    if current_frame_number is None:
+        # Only reachable for verdicts saved before event_frame existed
+        # (pre-Milestone 5 data). Fall back to a fresh auto-detection.
+        current_frame_number = detect_ffs_frame(filtered)
+
+    nudged_frame_number = current_frame_number + frame_delta
     ffs_frame = next((f for f in filtered if f.frame == nudged_frame_number), None)
     if ffs_frame is None:
         raise ValueError(
-            f"Nudged frame {nudged_frame_number} (auto-detected {auto_ffs_frame} + {frame_delta}) "
+            f"Nudged frame {nudged_frame_number} (current {current_frame_number} + {frame_delta}) "
             f"is out of range for this delivery's {len(filtered)} frames."
         )
 

@@ -54,8 +54,8 @@ def confirm_baseline(athlete_id: str, metric: str, median_deg: float, iqr_deg: f
 
 
 def get_rolling_history_deltas(athlete_id: str, metric: str, limit: int = ROLLING_HISTORY_LIMIT) -> list[float]:
-    """Deltas from the last `limit` verdicts for this athlete+metric, oldest
-    first (evaluate_delivery_deviation expects oldest-first ordering).
+    """Deltas from the last `limit` *valid deliveries* for this athlete+metric,
+    oldest first (evaluate_delivery_deviation expects oldest-first ordering).
 
     Done as three simple queries (sessions -> deliveries -> verdicts) rather
     than one query filtering through PostgREST's embedded-resource dot
@@ -64,6 +64,18 @@ def get_rolling_history_deltas(athlete_id: str, metric: str, limit: int = ROLLIN
     migration), there's no way to verify it against the real API from this
     environment without the service_role key. Three calls using only
     eq/in_/order/limit is slower but each step is unambiguous.
+
+    A delivery can have more than one verdict row (each Nudge FFS
+    re-evaluation inserts a new one rather than replacing the prior verdict
+    - see pipeline.nudge_and_reevaluate), and a DATA_SUPPRESSED verdict
+    doesn't represent a valid delivery at all. Applying `.limit(limit)` at
+    the SQL level before accounting for either of those would silently
+    shrink the window (a suppressed row eats a slot before being dropped)
+    or double-count a delivery (two rows for the same delivery_id). So no
+    SQL-level limit here - the verdicts are deduped by delivery_id (keeping
+    only the most recent) and filtered to valid ones (delta_deg is not
+    None) in Python first, and *that* result is what gets truncated to
+    `limit`.
     """
     db = get_supabase()
 
@@ -79,15 +91,26 @@ def get_rolling_history_deltas(athlete_id: str, metric: str, limit: int = ROLLIN
 
     verdict_rows = (
         db.table("verdicts")
-        .select("delta_deg")
+        .select("delivery_id, delta_deg")
         .in_("delivery_id", delivery_ids)
         .eq("metric", metric)
         .order("created_at", desc=True)
-        .limit(limit)
         .execute()
     )
-    deltas = [row["delta_deg"] for row in reversed(verdict_rows.data) if row["delta_deg"] is not None]
-    return deltas
+
+    seen_delivery_ids: set[str] = set()
+    valid_deltas_newest_first: list[float] = []
+    for row in verdict_rows.data:
+        if row["delivery_id"] in seen_delivery_ids:
+            continue  # an older row for a delivery whose latest verdict we already took
+        seen_delivery_ids.add(row["delivery_id"])
+        if row["delta_deg"] is None:
+            continue  # this delivery's latest verdict is DATA_SUPPRESSED - not a valid delivery
+        valid_deltas_newest_first.append(row["delta_deg"])
+        if len(valid_deltas_newest_first) == limit:
+            break
+
+    return list(reversed(valid_deltas_newest_first))
 
 
 def save_delivery(request: DeliveryIngestionRequest) -> None:
