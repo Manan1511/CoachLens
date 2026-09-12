@@ -27,7 +27,7 @@ export function EvidenceDisclosure({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="border-t border-line pt-md">
+    <div className="border-t border-line pt-6 pb-8">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -40,7 +40,7 @@ export function EvidenceDisclosure({
       </button>
 
       {open && (
-        <div className="mt-md grid grid-cols-2 gap-x-md gap-y-3 text-small max-mobile:grid-cols-1">
+        <div className="page-transition mt-md grid grid-cols-2 gap-x-md gap-y-3 text-small max-mobile:grid-cols-1">
           <Row label="Observed angle" value={formatDeg(kinematics.front_knee_angle_deg)} />
           <Row
             label="Confidence"
@@ -67,11 +67,11 @@ export function EvidenceDisclosure({
           <Row label="Matches in window" value={String(verdict.window_matches)} />
 
           {verdict.trigger_context_deltas && verdict.trigger_context_deltas.length > 0 && (
-            <div className="col-span-2 max-mobile:col-span-1">
-              <p className="mb-1.5 text-ink-secondary">
+            <div className="col-span-2 pt-3 pb-3 max-mobile:col-span-1">
+              <p className="mb-3 text-ink-secondary">
                 Contributing deltas: the rolling window behind "{WINDOW_LABELS[verdict.window_pattern]}"
               </p>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2.5 pb-2">
                 {verdict.trigger_context_deltas.map((d, i) => {
                   const band = baselines.uncertainty_band_deg;
                   const withinBand = band !== null ? Math.abs(d) <= band : null;

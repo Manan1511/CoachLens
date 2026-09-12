@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { Badge } from '@/components/ui/Badge';
 import { AthleteMeta } from '@/components/dashboard/AthleteMeta';
 import { BaselinePanel } from '@/components/dashboard/BaselinePanel';
 import { DeltaTrendChart, type TrendPoint } from '@/components/dashboard/DeltaTrendChart';
 import { FlagHistory } from '@/components/dashboard/FlagHistory';
+import { GuardianConsentModal } from '@/components/dashboard/GuardianConsentModal';
 import { SessionTimeline } from '@/components/dashboard/SessionTimeline';
 import { api } from '@/lib/api/client';
 import { computeDataQuality, countByStatus } from '@/lib/analytics';
@@ -54,6 +56,7 @@ function toTrendPoints(sessions: SessionSummary[]): TrendPoint[] {
  *  dashboard page. */
 export function AthleteDetailPage() {
   const { athleteId } = useParams<{ athleteId: string }>();
+  const [showConsentModal, setShowConsentModal] = useState(false);
   const { data, loading, error, reload } = useAsync(() => loadAthlete(athleteId!), [athleteId]);
 
   if (loading) return <p className="text-ink-secondary">Loading athlete…</p>;
@@ -77,11 +80,25 @@ export function AthleteDetailPage() {
 
         <h1 className="mb-1 text-h2 lg:text-h3">{athlete.name}</h1>
         {athlete.consent_blocked && (
-          <Badge tone="yellow" className="mb-2">
-            Guardian consent needed
-          </Badge>
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <Badge tone="yellow">Guardian consent needed</Badge>
+            <button
+              type="button"
+              onClick={() => setShowConsentModal(true)}
+              className="rounded-full border border-yellow-500/40 bg-yellow-500/10 px-2.5 py-0.5 text-caption font-semibold uppercase tracking-[0.08em] text-status-yellow transition-colors hover:bg-yellow-500/20"
+            >
+              Resolve
+            </button>
+          </div>
         )}
         <AthleteMeta bowling_arm={athlete.bowling_arm} />
+
+        <GuardianConsentModal
+          athlete={athlete}
+          isOpen={showConsentModal}
+          onClose={() => setShowConsentModal(false)}
+          onConsentUpdated={() => reload()}
+        />
 
         {quality.totalDeliveries > 0 && (
           <div className="mt-md border-t border-line pt-md">

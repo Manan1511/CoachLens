@@ -319,6 +319,246 @@
         }
       }
     },
+    "/api/v1/athletes": {
+      "get": {
+        "tags": [
+          "athletes"
+        ],
+        "summary": "List Athletes",
+        "description": "The roster the capture app draws its session pool from. Returns every\nathlete \u2014 `athletes` has no per-coach ownership column yet (see\nrepository.list_athletes).",
+        "operationId": "list_athletes_api_v1_athletes_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AthleteSummary"
+                  },
+                  "title": "Response List Athletes Api V1 Athletes Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "athletes"
+        ],
+        "summary": "Create Athlete",
+        "description": "Player registration, consumed by the coach dashboard \u2014 not by the\ncapture app, which only ever reads the roster (MOBILE_PLAN.md \u00a72).\n`bowling_arm` is required here precisely so the capture app never has to\nguess which leg is the front leg.",
+        "operationId": "create_athlete_api_v1_athletes_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AthleteCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AthleteSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/athletes/{athlete_id}/consent": {
+      "patch": {
+        "tags": [
+          "athletes"
+        ],
+        "summary": "Update Athlete Consent",
+        "description": "Updates guardian consent for an athlete.\n\nUnblocks youth athletes whose guardian has granted consent via WhatsApp,\nclub registration form, or verified parental confirmation.",
+        "operationId": "update_athlete_consent_api_v1_athletes__athlete_id__consent_patch",
+        "parameters": [
+          {
+            "name": "athlete_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Athlete Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AthleteConsentUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AthleteSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/athletes/{athlete_id}/sessions": {
+      "post": {
+        "tags": [
+          "athletes"
+        ],
+        "summary": "Start Or Resume Session",
+        "description": "Get-or-create today's session for this athlete (PRD nets workflow:\none coach/one phone, multiple bowlers taking turns - the mobile app\ncalls this on every \"which bowler is up\" switch, and gets back the same\nsession_id all day for a player it's already recorded).",
+        "operationId": "start_or_resume_session_api_v1_athletes__athlete_id__sessions_post",
+        "parameters": [
+          {
+            "name": "athlete_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Athlete Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/athletes/{athlete_id}/baseline": {
       "post": {
         "tags": [
@@ -476,6 +716,93 @@
   },
   "components": {
     "schemas": {
+      "AthleteConsentUpdateRequest": {
+        "properties": {
+          "guardian_consent": {
+            "type": "boolean",
+            "title": "Guardian Consent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "guardian_consent"
+        ],
+        "title": "AthleteConsentUpdateRequest"
+      },
+      "AthleteCreateRequest": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "bowling_arm": {
+            "$ref": "#/components/schemas/BowlingArm"
+          },
+          "dob": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dob"
+          },
+          "guardian_consent": {
+            "type": "boolean",
+            "title": "Guardian Consent",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "bowling_arm"
+        ],
+        "title": "AthleteCreateRequest"
+      },
+      "AthleteSummary": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "bowling_arm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BowlingArm"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "guardian_consent": {
+            "type": "boolean",
+            "title": "Guardian Consent"
+          },
+          "consent_blocked": {
+            "type": "boolean",
+            "title": "Consent Blocked"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "guardian_consent",
+          "consent_blocked"
+        ],
+        "title": "AthleteSummary",
+        "description": "A roster entry, as returned by GET /api/v1/athletes.\n\nDeliberately omits `dob`: the capture app reads this list on a phone\nshared net-side between players, and it needs to know whether an athlete\ncan be recorded, not their birthday."
+      },
       "BaselineConfirmRequest": {
         "properties": {
           "metric": {
@@ -560,6 +887,14 @@
         "type": "object",
         "title": "Baselines"
       },
+      "BowlingArm": {
+        "type": "string",
+        "enum": [
+          "RIGHT",
+          "LEFT"
+        ],
+        "title": "BowlingArm"
+      },
       "CaptureMetadata": {
         "properties": {
           "fps": {
@@ -571,7 +906,14 @@
             "title": "Pacing Jitter Pct"
           },
           "shutter_speed_sec": {
-            "type": "number",
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Shutter Speed Sec"
           },
           "distance_meters": {
@@ -591,7 +933,6 @@
         "required": [
           "fps",
           "pacing_jitter_pct",
-          "shutter_speed_sec",
           "distance_meters",
           "tripod_height_meters",
           "camera_roll_deg"
@@ -682,10 +1023,6 @@
             "type": "string",
             "title": "Session Id"
           },
-          "athlete_id": {
-            "type": "string",
-            "title": "Athlete Id"
-          },
           "capture_metadata": {
             "$ref": "#/components/schemas/CaptureMetadata"
           },
@@ -701,7 +1038,6 @@
         "required": [
           "delivery_id",
           "session_id",
-          "athlete_id",
           "capture_metadata",
           "raw_keypoints"
         ],
@@ -713,7 +1049,8 @@
           "DATA_SUPPRESSED",
           "FORM_BENCHMARK",
           "MECHANICAL_WATCH",
-          "TECHNICAL_CONCERN"
+          "TECHNICAL_CONCERN",
+          "BENCHMARK_PENDING"
         ],
         "title": "DeliveryStatus",
         "description": "Canonical verdict status. This is the single source of truth for status\nnames across measurement/interpretation/coaching \u2014 see BACKEND_PLAN.md's\n\"Notes on resolved spec conflicts\" for why MECHANICAL_WATCH was chosen\nover the PRD markdown's UNCLASSIFIED_DEVIATION."
@@ -913,6 +1250,35 @@
           "credential"
         ],
         "title": "ProposedAction"
+      },
+      "SessionResponse": {
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "athlete_id": {
+            "type": "string",
+            "title": "Athlete Id"
+          },
+          "session_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Session Date"
+          },
+          "created": {
+            "type": "boolean",
+            "title": "Created"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_id",
+          "athlete_id",
+          "session_date",
+          "created"
+        ],
+        "title": "SessionResponse"
       },
       "ValidationError": {
         "properties": {

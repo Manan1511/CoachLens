@@ -86,10 +86,11 @@ These are facts about the *problem*, not about React Native — they don't stop 
 - [x] **Raw video frames confirmed never persisted or uploaded** — architectural, not a separate mechanism to build: grepped the whole `apps/web/src` tree for `MediaRecorder`/`toDataURL`/`captureStream`/`toBlob`/`drawImage` — none exist. The live `MediaStream` is only ever handed to `detectForVideo`, which reads pixels inside WASM memory and never exposes them back to JS; there is no code path capable of capturing a frame even by accident.
 - [x] **Unit test written and passing, cross-checked against the backend's own `angles.py` — not just against this module's own logic** (`extractKeypointFrame.test.ts`, `npm test` via a newly added `vitest`, since `apps/web` had no test runner at all before this). The real cross-check: `services/coaching-api/tests/test_interpretation.py` has four synthetic-geometry cases with known expected angles (co-linear hip/knee/ankle → 180°, perpendicular → 90°, shoulder directly above hip → 0° trunk tilt, shoulder 45°-forward-and-up → 45°) — this test ports the *exact same* coordinates through `extractKeypointFrame`'s pixel-space conversion and landmark selection, then runs the *same* vector-angle formula the backend uses, and asserts the same four expected angles. If the pixel-space conversion or the front-leg/bowling-arm side-selection were wrong, these numbers would stop matching the backend's own test suite — that agreement is the actual cross-check, not a number this module invented and then asserted against itself. 11/11 tests pass.
 
-### Milestone 3 — Ingestion + verdict
-- [ ] `POST /api/v1/sessions/delivery` with the coach's Supabase JWT
-- [ ] Verdict rendering for all five statuses including `BENCHMARK_PENDING`
-- [ ] Nudge FFS control
+### Milestone 3 — Ingestion, verdict & hands-free auto-trigger — **done, 2026-09-13**
+- [x] **`POST /api/v1/sessions/delivery` with the coach's Supabase JWT** (`submitDeliverySlice.ts` / `useSpellCapture.ts` / `api.submitDelivery`). Packages the normalized keypoint slice into the backend's `DeliveryIngestionRequest` with computed capture metadata (`fps`, `pacing_jitter_pct`, camera roll from `deviceorientation`).
+- [x] **Verdict rendering for all five statuses including `BENCHMARK_PENDING`** (`CapturePage.tsx` toast notifications, spell delivery log panel, status badges, and `DeliveryReportPage.tsx`).
+- [x] **Nudge FFS control** (`NudgeFfsControl.tsx` calling `POST /api/v1/deliveries/{id}/nudge-ffs`).
+- [x] **Optical Crease Auto-Trigger with Rolling Ring Buffer** (`useRingBuffer.ts`, `useCreaseTrigger.ts`, `useSpellCapture.ts`). Eliminates manual phone tapping between balls: continuously buffers 2.5s of keypoints in a circular ring buffer, monitors for front ankle crease entry + zero vertical velocity + braking deceleration, slices $[t_{\text{plant}} - 1.0\text{s}, t_{\text{plant}} + 0.5\text{s}]$, auto-submits, plays an 880Hz audio confirmation chime, and enforces a 5s post-delivery cooldown. Covered by 13 unit tests in `spellCapture.test.ts`. Preserves manual capture as a fallback button.
 
 ## Dead End Registry
 

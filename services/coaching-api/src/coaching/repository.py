@@ -104,6 +104,14 @@ def create_athlete(name: str, bowling_arm: str, dob: date | None, guardian_conse
     return _athlete_summary(result.data[0])
 
 
+def update_athlete_consent(athlete_id: str, guardian_consent: bool) -> AthleteSummary:
+    db = get_supabase()
+    result = db.table("athletes").update({"guardian_consent": guardian_consent}).eq("id", athlete_id).execute()
+    if not result.data:
+        raise NotFoundError(f"Athlete {athlete_id} not found")
+    return _athlete_summary(result.data[0])
+
+
 def get_baseline(athlete_id: str, metric: str) -> BaselineRecord | None:
     db = get_supabase()
     result = (

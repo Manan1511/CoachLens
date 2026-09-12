@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { AthleteCard } from '@/components/dashboard/AthleteCard';
 import { StatusDistributionBar } from '@/components/dashboard/StatusDistributionBar';
+import { AddAthleteModal } from '@/components/dashboard/AddAthleteModal';
 import { api } from '@/lib/api/client';
 import { countByStatus } from '@/lib/analytics';
 import { useAsync } from '@/hooks/useAsync';
@@ -33,12 +35,12 @@ async function loadRoster(): Promise<RosterRow[]> {
   );
 
   const rows = athletes.map((athlete, i) => {
-    const history: SessionSummary[] = histories[i];
-    const lastSession = history[0];
-    const lastDelivery = lastSession?.deliveries[lastSession.deliveries.length - 1];
+    const history: SessionSummary[] = histories[i] ?? [];
+    const sessionWithDeliveries = history.find((s) => s.deliveries.length > 0) ?? history[0];
+    const lastDelivery = sessionWithDeliveries?.deliveries[sessionWithDeliveries.deliveries.length - 1];
     return {
       athlete,
-      lastSessionDate: lastSession?.session_date ?? null,
+      lastSessionDate: sessionWithDeliveries?.session_date ?? null,
       latestStatus: lastDelivery?.latest_status ?? null,
       statusCounts: countByStatus(history.flatMap((s) => s.deliveries)),
     };
@@ -51,7 +53,8 @@ async function loadRoster(): Promise<RosterRow[]> {
 }
 
 export function RosterPage() {
-  const { data: rows, loading, error } = useAsync(loadRoster, []);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const { data: rows, loading, error, reload } = useAsync(loadRoster, []);
 
   const needsReview =
     rows?.filter((r) => r.latestStatus === 'TECHNICAL_CONCERN' || r.latestStatus === 'MECHANICAL_WATCH')
@@ -64,14 +67,33 @@ export function RosterPage() {
 
   return (
     <div className="mx-auto max-w-[42rem]">
-      <h1 className="mb-xs text-h2">Roster</h1>
-      <p className="mb-lg text-ink-secondary">
-        {rows && rows.length > 0
-          ? needsReview > 0
-            ? `${needsReview} of ${rows.length} ${rows.length === 1 ? 'athlete needs' : 'athletes need'} a look, listed first below.`
-            : `${rows.length} ${rows.length === 1 ? 'athlete' : 'athletes'}, all on baseline.`
-          : 'Athletes across your sessions.'}
-      </p>
+      <div className="mb-lg flex items-start justify-between gap-4">
+        <div>
+          <h1 className="mb-xs text-h2">Roster</h1>
+          <p className="text-ink-secondary">
+            {rows && rows.length > 0
+              ? needsReview > 0
+                ? `${needsReview} of ${rows.length} ${rows.length === 1 ? 'athlete needs' : 'athletes need'} a look, listed first below.`
+                : `${rows.length} ${rows.length === 1 ? 'athlete' : 'athletes'}, all on baseline.`
+              : 'Athletes across your sessions.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowAddModal(true)}
+          className="shrink-0 flex items-center gap-1.5 rounded-full border border-white/28 bg-white/6 px-4 py-2 text-caption font-semibold uppercase tracking-[0.08em] text-ink transition-all duration-200 hover:border-ink hover:bg-white/10 hover:shadow-glow"
+        >
+          <span>+ Add Athlete</span>
+        </button>
+      </div>
+
+      <AddAthleteModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onAthleteCreated={() => {
+          reload();
+        }}
+      />
 
       {latestStatusCounts && Object.keys(latestStatusCounts).length > 0 && (
         <div className="mb-lg">

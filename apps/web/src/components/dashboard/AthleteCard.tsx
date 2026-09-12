@@ -35,7 +35,7 @@ export function AthleteCard({
   return (
     <Link
       to={`/app/athletes/${athlete.id}`}
-      className="-mx-3 block border-b border-line px-3 py-4 transition-colors duration-200 first:pt-0 last:border-b-0 hover:bg-white/3"
+      className="-mx-3 block border-b border-line px-3 py-4 transition-all duration-200 ease-smooth first:pt-0 last:border-b-0 hover:bg-white/4 hover:translate-x-1"
     >
       <div className="mb-1 flex items-center justify-between gap-sm">
         <span className="min-w-0 flex-1 truncate text-body font-medium text-ink">

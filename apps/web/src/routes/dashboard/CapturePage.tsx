@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Badge } from '@/components/ui/Badge';
+import { GuardianConsentModal } from '@/components/dashboard/GuardianConsentModal';
 import { api } from '@/lib/api/client';
 import { useAsync } from '@/hooks/useAsync';
 import { usePoseLandmarker, POSE_LANDMARK } from '@/lib/pose/usePoseLandmarker';
@@ -41,8 +42,9 @@ function SessionPoolSetup({
   resolving: boolean;
   error: string | null;
 }) {
-  const { data: roster, loading, error: rosterError } = useAsync(() => api.listAthletes(), []);
+  const { data: roster, loading, error: rosterError, reload: reloadRoster } = useAsync(() => api.listAthletes(), []);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [resolvingConsentAthlete, setResolvingConsentAthlete] = useState<Athlete | null>(null);
 
   function toggle(athleteId: string) {
     setSelectedIds((prev) => {
@@ -73,9 +75,14 @@ function SessionPoolSetup({
               <button
                 key={athlete.id}
                 type="button"
-                disabled={athlete.consent_blocked}
-                onClick={() => toggle(athlete.id)}
-                className={`-mx-3 flex items-center justify-between gap-sm border-b border-line px-3 py-4 text-left transition-colors duration-200 last:border-b-0 disabled:opacity-40 ${
+                onClick={() => {
+                  if (athlete.consent_blocked) {
+                    setResolvingConsentAthlete(athlete);
+                  } else {
+                    toggle(athlete.id);
+                  }
+                }}
+                className={`-mx-3 flex items-center justify-between gap-sm border-b border-line px-3 py-4 text-left transition-colors duration-200 last:border-b-0 ${
                   isSelected ? 'bg-white/6' : 'hover:bg-white/3'
                 }`}
               >
@@ -83,7 +90,10 @@ function SessionPoolSetup({
                   {athlete.name}
                 </span>
                 {athlete.consent_blocked ? (
-                  <Badge tone="yellow">Consent needed</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge tone="yellow">Consent needed</Badge>
+                    <span className="text-[11px] text-ink-dim underline hover:text-ink">Resolve</span>
+                  </div>
                 ) : (
                   <span
                     className={`flex size-6 shrink-0 items-center justify-center rounded-full border ${
@@ -99,6 +109,15 @@ function SessionPoolSetup({
           })}
         </div>
       )}
+
+      <GuardianConsentModal
+        athlete={resolvingConsentAthlete}
+        isOpen={Boolean(resolvingConsentAthlete)}
+        onClose={() => setResolvingConsentAthlete(null)}
+        onConsentUpdated={() => {
+          reloadRoster();
+        }}
+      />
 
       {error && <p className="mb-md text-status-red">{error}</p>}
 
