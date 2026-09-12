@@ -13,6 +13,7 @@ from src.measurement.errors import ThermalThrottleError
 from src.schemas.delivery import CaptureMetadata, DeliveryIngestionRequest, KeypointFrame, Landmark
 from src.schemas.report import Baselines, CoachingReport, Kinematics, Verdict
 from src.schemas.status import DeliveryStatus, WindowPattern
+from tests.conftest import TEST_COACH
 
 client = TestClient(app)
 
@@ -105,13 +106,18 @@ def test_record_coach_action_saves_against_latest_verdict(monkeypatch):
     monkeypatch.setattr(
         actions.repository,
         "save_coach_action",
-        lambda verdict_id, action, note, nudge_frame_delta: saved.update(
-            verdict_id=verdict_id, action=action, note=note
+        lambda verdict_id, action, note, nudge_frame_delta, coach_id: saved.update(
+            verdict_id=verdict_id, action=action, note=note, coach_id=coach_id
         ),
     )
     response = client.post("/api/v1/deliveries/DEL-1/action", json={"action": "APPROVE", "note": "looks good"})
     assert response.status_code == 200
-    assert saved == {"verdict_id": "verdict-1", "action": "APPROVE", "note": "looks good"}
+    assert saved == {
+        "verdict_id": "verdict-1",
+        "action": "APPROVE",
+        "note": "looks good",
+        "coach_id": TEST_COACH.id,
+    }
 
 
 def test_record_coach_action_404_when_no_verdict(monkeypatch):
@@ -125,8 +131,8 @@ def test_confirm_baseline_calls_repository(monkeypatch):
     monkeypatch.setattr(
         athletes.repository,
         "confirm_baseline",
-        lambda athlete_id, metric, median_deg, iqr_deg: saved.update(
-            athlete_id=athlete_id, metric=metric, median_deg=median_deg, iqr_deg=iqr_deg
+        lambda athlete_id, metric, median_deg, iqr_deg, confirmed_by: saved.update(
+            athlete_id=athlete_id, metric=metric, median_deg=median_deg, iqr_deg=iqr_deg, confirmed_by=confirmed_by
         ),
     )
     response = client.post(
@@ -136,6 +142,7 @@ def test_confirm_baseline_calls_repository(monkeypatch):
     assert response.status_code == 200
     assert saved["athlete_id"] == "ATH-1"
     assert saved["median_deg"] == 148.0
+    assert saved["confirmed_by"] == TEST_COACH.id
 
 
 def test_get_athlete_history_returns_repository_data(monkeypatch):

@@ -66,6 +66,11 @@ class FakeRepository:
     def get_drill(self, drill_id):
         return None
 
+    def get_athlete_consent_info(self, athlete_id):
+        # dob=None -> consent gate can't determine minor status, lets it
+        # through (see pipeline._check_consent) - fine for this demo athlete.
+        return repository.AthleteConsentInfo(dob=None, guardian_consent=False)
+
 
 def test_demo_scenario_produces_expected_status_sequence(monkeypatch):
     fake = FakeRepository()
@@ -75,6 +80,7 @@ def test_demo_scenario_produces_expected_status_sequence(monkeypatch):
     monkeypatch.setattr(repository, "save_delivery", fake.save_delivery)
     monkeypatch.setattr(repository, "save_verdict", fake.save_verdict)
     monkeypatch.setattr(repository, "get_drill", fake.get_drill)
+    monkeypatch.setattr(repository, "get_athlete_consent_info", fake.get_athlete_consent_info)
 
     from scripts.demo_fixtures import ATHLETE_ID, BASELINE_IQR_DEG, BASELINE_MEDIAN_DEG
 
@@ -114,6 +120,7 @@ def test_demo_scenario_via_real_http_routes(monkeypatch):
     monkeypatch.setattr(repository, "save_delivery", fake.save_delivery)
     monkeypatch.setattr(repository, "save_verdict", fake.save_verdict)
     monkeypatch.setattr(repository, "get_drill", fake.get_drill)
+    monkeypatch.setattr(repository, "get_athlete_consent_info", fake.get_athlete_consent_info)
 
     from scripts.demo_fixtures import ATHLETE_ID, BASELINE_IQR_DEG, BASELINE_MEDIAN_DEG
 

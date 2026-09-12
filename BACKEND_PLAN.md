@@ -88,12 +88,18 @@ Ran a full correctness/best-practices review of `services/coaching-api`. Found a
 - [x] **Silent unfiltered fallback** (`pipeline.py`) — `_filtered_or_raw` now returns `(frames, was_filtered: bool)` instead of just `frames`; the flag flows into a new `Kinematics.filtered` field (and a matching `verdicts.filtered` DB column) so a coach or downstream consumer can tell a noisier, unfiltered measurement apart from a clean one instead of both looking identical. Verified true/false in both the fresh-compute path and a real DB round-trip.
 - [x] **Unbounded rolling-history scan** (`repository.py`) — `get_rolling_history_deltas` now caps the initial sessions lookup at `RECENT_SESSIONS_SCAN_LIMIT` (20) instead of scanning an athlete's entire multi-season history on every ingest. Documented as a pragmatic bound, not a perfect fix — an athlete with fewer than 4 valid deliveries across their most recent 20 sessions would see a shorter window than intended; a schema change adding `athlete_id` directly to `deliveries`/`verdicts` would remove the need for this bound entirely but is a bigger change than fixing the immediate cost.
 
+## Milestone 7 — Auth, consent gate, cloud pose extraction
+Picked up from the Deferred list below, at the user's direction. Scope: (1) auth/real coach accounts, (2) adolescent consent gate enforcement, (3) cloud-side pose extraction fallback.
+- [x] Auth: `src/coaching/auth.py::require_coach` verifies coach identity via Supabase Auth (`auth.get_user(jwt)` — a network call to the Auth service on every request, not local JWT-secret decoding, so a revoked token is rejected immediately rather than staying valid until expiry). Coaches sign in client-side against the Supabase Auth SDK; the backend never sees or handles a password.
+- [x] `coach_actions.coach_id` and `baselines.confirmed_by` columns added (both `uuid references auth.users(id)`) — coach approve/dismiss actions and baseline confirmations are now attributed to the authenticated coach, not anonymous.
+- [x] All `/api/v1/*` routes protected behind `require_coach` (router-level `dependencies=[Depends(require_coach)]` on `deliveries.py`; per-endpoint `Depends` on `actions.py`/`athletes.py` where the coach identity is also needed for attribution). Verified with a real enforcement test that clears the auth override and confirms every route 401s without a token, plus `/health` staying open.
+- [x] Consent gate (`pipeline._check_consent`, PRD §10): blocks `evaluate_delivery`/`nudge_and_reevaluate` for an athlete under 18 without `guardian_consent = true`, called before any writes (same "score before persist" principle as the baseline check). **Honest limitation, not silently perfect**: if an athlete has no `dob` on file, minor status can't be determined and the gate does not block — documented in the function's own docstring rather than asserted as complete. Mutation-tested (temporarily disabled the check, confirmed the test caught it).
+- [x] `scripts/demo_walkthrough.py` updated to sign in (or sign up, first run) a throwaway demo coach via Supabase Auth and attach the resulting JWT — it would otherwise 401 against the now-protected routes.
+- [ ] **Cloud pose extraction fallback: not started — design proposal needed first.** This item directly contradicts the Milestone 0 architecture decision ("pose extraction happens on-device... the backend never touches raw video and never runs ML inference") — it's not an incremental addition, it's a second ingestion path with a different trust/privacy/infrastructure model (video upload, ephemeral storage + deletion, GPU/CPU inference serving). Flagged to the user rather than silently built.
+
 ## Deferred (post-hackathon, not blocking demo)
-- [ ] Auth / real coach accounts (stub a coach id for now)
-- [ ] Adolescent parental consent gate enforcement (schema field exists, not enforced)
 - [ ] Rolling 6-week median (needs real longitudinal data)
 - [ ] WhatsApp export integration (return card text/JSON only for now)
-- [ ] Cloud-side pose extraction fallback
 
 ---
 

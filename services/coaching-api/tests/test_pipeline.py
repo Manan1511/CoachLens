@@ -4,6 +4,8 @@ on that module object affects pipeline's calls too) - this tests the actual
 orchestration logic without a real database.
 """
 
+from datetime import date, timedelta
+
 import pytest
 
 from src.coaching import pipeline, repository
@@ -56,6 +58,11 @@ def fake_repo(monkeypatch):
     monkeypatch.setattr(repository, "save_delivery", lambda req: calls["saved_deliveries"].append(req))
     monkeypatch.setattr(repository, "get_baseline", lambda athlete_id, metric: repository.BaselineRecord(148.0, 3.5))
     monkeypatch.setattr(repository, "get_rolling_history_deltas", lambda athlete_id, metric: [])
+    # dob=None means the consent gate can't determine minor status and lets
+    # the delivery through - see pipeline._check_consent's docstring.
+    monkeypatch.setattr(
+        repository, "get_athlete_consent_info", lambda athlete_id: repository.AthleteConsentInfo(dob=None, guardian_consent=False)
+    )
 
     def fake_save_verdict(**kwargs):
         calls["saved_verdicts"].append(kwargs)
@@ -79,6 +86,60 @@ def test_evaluate_delivery_persists_and_returns_report(fake_repo):
 def test_evaluate_delivery_raises_on_unknown_baseline(monkeypatch, fake_repo):
     monkeypatch.setattr(repository, "get_baseline", lambda athlete_id, metric: None)
     with pytest.raises(pipeline.UnknownBaselineError):
+        pipeline.evaluate_delivery(make_request())
+
+
+def _minor_dob(years_old: int) -> date:
+    return date.today() - timedelta(days=years_old * 365 + 10)
+
+
+def test_evaluate_delivery_blocks_minor_without_consent(monkeypatch, fake_repo):
+    monkeypatch.setattr(
+        repository,
+        "get_athlete_consent_info",
+        lambda athlete_id: repository.AthleteConsentInfo(dob=_minor_dob(15), guardian_consent=False),
+    )
+    with pytest.raises(pipeline.ConsentRequiredError):
+        pipeline.evaluate_delivery(make_request())
+    assert fake_repo["saved_deliveries"] == []
+    assert fake_repo["saved_verdicts"] == []
+
+
+def test_evaluate_delivery_allows_minor_with_consent(monkeypatch, fake_repo):
+    monkeypatch.setattr(
+        repository,
+        "get_athlete_consent_info",
+        lambda athlete_id: repository.AthleteConsentInfo(dob=_minor_dob(15), guardian_consent=True),
+    )
+    report = pipeline.evaluate_delivery(make_request())
+    assert report is not None
+
+
+def test_evaluate_delivery_allows_adult_without_consent_flag(monkeypatch, fake_repo):
+    monkeypatch.setattr(
+        repository,
+        "get_athlete_consent_info",
+        lambda athlete_id: repository.AthleteConsentInfo(dob=_minor_dob(25), guardian_consent=False),
+    )
+    report = pipeline.evaluate_delivery(make_request())
+    assert report is not None
+
+
+def test_evaluate_delivery_allows_unknown_dob(monkeypatch, fake_repo):
+    """Documented limitation: without a dob on file, minor status can't be
+    determined, so the gate does not block. See _check_consent's docstring."""
+    monkeypatch.setattr(
+        repository,
+        "get_athlete_consent_info",
+        lambda athlete_id: repository.AthleteConsentInfo(dob=None, guardian_consent=False),
+    )
+    report = pipeline.evaluate_delivery(make_request())
+    assert report is not None
+
+
+def test_evaluate_delivery_raises_not_found_for_unknown_athlete(monkeypatch, fake_repo):
+    monkeypatch.setattr(repository, "get_athlete_consent_info", lambda athlete_id: None)
+    with pytest.raises(repository.NotFoundError):
         pipeline.evaluate_delivery(make_request())
 
 
@@ -167,6 +228,7 @@ def test_nudge_and_reevaluate_is_cumulative_across_repeated_nudges(monkeypatch, 
 
 def test_nudge_and_reevaluate_raises_not_found_without_prior_verdict(monkeypatch, fake_repo):
     request = make_request()
+    monkeypatch.setattr(repository, "get_athlete_id_for_delivery", lambda delivery_id: "ATH-1")
     monkeypatch.setattr(
         repository, "get_delivery_frames", lambda delivery_id: (request.raw_keypoints, request.capture_metadata)
     )

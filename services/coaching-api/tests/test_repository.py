@@ -39,7 +39,7 @@ def test_get_baseline_maps_row_to_record(mock_db):
 
 
 def test_confirm_baseline_upserts_expected_row(mock_db):
-    repository.confirm_baseline("ATH-1", "front_knee_angle_deg", 148.0, 3.5)
+    repository.confirm_baseline("ATH-1", "front_knee_angle_deg", 148.0, 3.5, confirmed_by="COACH-1")
     mock_db.table.assert_any_call("baselines")
     mock_db.table.return_value.upsert.assert_called_once_with(
         {
@@ -47,6 +47,7 @@ def test_confirm_baseline_upserts_expected_row(mock_db):
             "metric": "front_knee_angle_deg",
             "fixed_median_deg": 148.0,
             "fixed_iqr_deg": 3.5,
+            "confirmed_by": "COACH-1",
         }
     )
 

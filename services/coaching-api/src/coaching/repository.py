@@ -5,7 +5,7 @@ Postgres or real network access.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 
 from src.db.client import get_supabase
 from src.schemas.delivery import CaptureMetadata, DeliveryIngestionRequest, KeypointFrame
@@ -30,6 +30,22 @@ class BaselineRecord:
     iqr_deg: float
 
 
+@dataclass
+class AthleteConsentInfo:
+    dob: date | None
+    guardian_consent: bool
+
+
+def get_athlete_consent_info(athlete_id: str) -> AthleteConsentInfo | None:
+    db = get_supabase()
+    result = db.table("athletes").select("dob, guardian_consent").eq("id", athlete_id).limit(1).execute()
+    if not result.data:
+        return None
+    row = result.data[0]
+    dob = date.fromisoformat(row["dob"]) if row["dob"] else None
+    return AthleteConsentInfo(dob=dob, guardian_consent=row["guardian_consent"])
+
+
 class NotFoundError(Exception):
     """Raised when a referenced row (athlete, baseline, delivery) doesn't exist."""
 
@@ -50,7 +66,7 @@ def get_baseline(athlete_id: str, metric: str) -> BaselineRecord | None:
     return BaselineRecord(median_deg=row["fixed_median_deg"], iqr_deg=row["fixed_iqr_deg"])
 
 
-def confirm_baseline(athlete_id: str, metric: str, median_deg: float, iqr_deg: float) -> None:
+def confirm_baseline(athlete_id: str, metric: str, median_deg: float, iqr_deg: float, confirmed_by: str) -> None:
     db = get_supabase()
     db.table("baselines").upsert(
         {
@@ -58,6 +74,7 @@ def confirm_baseline(athlete_id: str, metric: str, median_deg: float, iqr_deg: f
             "metric": metric,
             "fixed_median_deg": median_deg,
             "fixed_iqr_deg": iqr_deg,
+            "confirmed_by": confirmed_by,
         }
     ).execute()
 
@@ -226,7 +243,9 @@ def get_drill(drill_id: str) -> ProposedAction | None:
     )
 
 
-def save_coach_action(verdict_id: str, action: str, note: str | None, nudge_frame_delta: int | None) -> None:
+def save_coach_action(
+    verdict_id: str, action: str, note: str | None, nudge_frame_delta: int | None, coach_id: str
+) -> None:
     db = get_supabase()
     db.table("coach_actions").insert(
         {
@@ -234,6 +253,7 @@ def save_coach_action(verdict_id: str, action: str, note: str | None, nudge_fram
             "action": action,
             "note": note,
             "nudge_frame_delta": nudge_frame_delta,
+            "coach_id": coach_id,
         }
     ).execute()
 

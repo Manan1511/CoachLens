@@ -1,12 +1,13 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from src.coaching import repository
-from src.coaching.pipeline import UnknownBaselineError, evaluate_delivery, nudge_and_reevaluate
+from src.coaching.auth import require_coach
+from src.coaching.pipeline import ConsentRequiredError, UnknownBaselineError, evaluate_delivery, nudge_and_reevaluate
 from src.measurement.errors import ThermalThrottleError
 from src.schemas.delivery import DeliveryIngestionRequest
 from src.schemas.report import CoachingReport
 
-router = APIRouter(prefix="/api/v1", tags=["deliveries"])
+router = APIRouter(prefix="/api/v1", tags=["deliveries"], dependencies=[Depends(require_coach)])
 
 
 @router.post("/sessions/delivery", response_model=CoachingReport)
@@ -17,6 +18,10 @@ def ingest_delivery(payload: DeliveryIngestionRequest) -> CoachingReport:
         raise HTTPException(status_code=422, detail={"code": exc.code, "message": str(exc)}) from exc
     except UnknownBaselineError as exc:
         raise HTTPException(status_code=422, detail={"code": "ERR_UNKNOWN_BASELINE", "message": str(exc)}) from exc
+    except ConsentRequiredError as exc:
+        raise HTTPException(status_code=403, detail={"code": "ERR_CONSENT_REQUIRED", "message": str(exc)}) from exc
+    except repository.NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/reports/{delivery_id}", response_model=CoachingReport)
@@ -36,5 +41,7 @@ def nudge_ffs(delivery_id: str, frame_delta: int) -> CoachingReport:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except UnknownBaselineError as exc:
         raise HTTPException(status_code=422, detail={"code": "ERR_UNKNOWN_BASELINE", "message": str(exc)}) from exc
+    except ConsentRequiredError as exc:
+        raise HTTPException(status_code=403, detail={"code": "ERR_CONSENT_REQUIRED", "message": str(exc)}) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

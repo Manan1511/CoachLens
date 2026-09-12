@@ -11,25 +11,58 @@ Prerequisites:
   2. scripts/seed.py already run (creates the athlete/session/baseline/drill)
   3. Server running: uvicorn src.main:app --app-dir . --port 8811
 
+Since Milestone 7, every /api/v1 route requires a Supabase Auth JWT. This
+script signs in (or signs up, on first run) a throwaway demo coach account
+to get one - DEMO_COACH_EMAIL/DEMO_COACH_PASSWORD below are for this script
+only, never for a real coach. Override via env vars for anything beyond a
+local demo.
+
 Run with: PYTHONPATH=. python scripts/demo_walkthrough.py [base_url]
 Not run automatically in CI/tests - this hits a real server and mutates the
 real database (each demo delivery is upserted, so it's safe to re-run).
 """
 
+import os
 import statistics
 import sys
 import time
 
 import httpx
+from gotrue.errors import AuthApiError
 
 from scripts.demo_fixtures import DEMO_DELIVERIES, build_delivery_payload
+from src.db.client import get_supabase
 
 DEFAULT_BASE_URL = "http://localhost:8811"
+DEMO_COACH_EMAIL = os.environ.get("DEMO_COACH_EMAIL", "demo-coach@coachlens.dev")
+DEMO_COACH_PASSWORD = os.environ.get("DEMO_COACH_PASSWORD", "coachlens-demo-only-password-1")
+
+
+def get_demo_coach_token() -> str:
+    """Signs in the demo coach, creating the account on first run. Uses the
+    same Supabase client as the backend (service_role key) purely as a
+    convenient way to reach the Auth API - the sign-in itself authenticates
+    as the demo coach, not as service_role.
+    """
+    auth = get_supabase().auth
+    try:
+        result = auth.sign_in_with_password({"email": DEMO_COACH_EMAIL, "password": DEMO_COACH_PASSWORD})
+    except AuthApiError:
+        result = auth.sign_up({"email": DEMO_COACH_EMAIL, "password": DEMO_COACH_PASSWORD})
+    if result.session is None:
+        raise RuntimeError(
+            "Could not obtain a session for the demo coach account - if email "
+            "confirmation is required on this Supabase project, disable it for "
+            "demo purposes (Authentication > Providers > Email) or confirm the "
+            "account manually."
+        )
+    return result.session.access_token
 
 
 def main() -> None:
     base_url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_BASE_URL
-    client = httpx.Client(base_url=base_url, timeout=20.0)
+    token = get_demo_coach_token()
+    client = httpx.Client(base_url=base_url, timeout=20.0, headers={"Authorization": f"Bearer {token}"})
     latencies_s = []
     mismatches = []
 

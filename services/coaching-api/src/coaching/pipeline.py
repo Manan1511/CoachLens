@@ -5,7 +5,7 @@ src/coaching/repository.py.
 """
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from src.coaching import repository
 from src.interpretation.angles import front_knee_angle_deg
@@ -36,6 +36,42 @@ TECHNICAL_CONCERN_DRILL_ID = "DRL-SNC-012"
 
 class UnknownBaselineError(Exception):
     """Raised when the athlete has no confirmed baseline for this metric yet."""
+
+
+class ConsentRequiredError(Exception):
+    """Raised when an athlete under MINOR_AGE_CUTOFF has no recorded guardian
+    consent (PRD §10 Adolescent Consent Gate)."""
+
+
+MINOR_AGE_CUTOFF = 18
+
+
+def _check_consent(athlete_id: str) -> None:
+    """PRD §10: "Digital Parental Consent Gate: Adolescent fast bowlers
+    (< 18 years) require verifiable digital guardian acknowledgment before
+    profile activation." Called before any measurement/persistence work.
+
+    If the athlete's date of birth isn't on file, this cannot determine
+    minor status and does NOT block - that's a real gap (an athlete with no
+    recorded dob bypasses the gate entirely), not a silent guarantee of
+    enforcement. Treat "dob missing" as a data-completeness problem to fix
+    at registration time, not something this function can safely default to
+    blocking, since that would also lock out adults who simply never had a
+    dob recorded (e.g. existing pre-Milestone-7 seed/demo data).
+    """
+    info = repository.get_athlete_consent_info(athlete_id)
+    if info is None:
+        raise repository.NotFoundError(f"No athlete found for athlete_id={athlete_id!r}")
+    if info.dob is None:
+        return
+
+    today = date.today()
+    age_years = today.year - info.dob.year - ((today.month, today.day) < (info.dob.month, info.dob.day))
+    if age_years < MINOR_AGE_CUTOFF and not info.guardian_consent:
+        raise ConsentRequiredError(
+            f"Athlete {athlete_id!r} is under {MINOR_AGE_CUTOFF} with no recorded guardian consent; "
+            f"cannot process deliveries until consent is confirmed."
+        )
 
 
 @dataclass
@@ -169,6 +205,8 @@ def _filtered_or_raw(frames: list[KeypointFrame], fps: int) -> tuple[list[Keypoi
 
 
 def evaluate_delivery(request: DeliveryIngestionRequest) -> CoachingReport:
+    _check_consent(request.athlete_id)
+
     frames = request.raw_keypoints
     fps = request.capture_metadata.fps
 
@@ -199,6 +237,9 @@ def nudge_and_reevaluate(delivery_id: str, frame_delta: int) -> CoachingReport:
     scratch each time, which would make every nudge land on the same frame
     (auto_frame + frame_delta) regardless of how many times it was clicked.
     """
+    athlete_id = repository.get_athlete_id_for_delivery(delivery_id)
+    _check_consent(athlete_id)
+
     frames, capture_metadata = repository.get_delivery_frames(delivery_id)
     latest_verdict = repository.get_latest_verdict_for_delivery(delivery_id)
     if latest_verdict is None:
@@ -219,6 +260,5 @@ def nudge_and_reevaluate(delivery_id: str, frame_delta: int) -> CoachingReport:
             f"is out of range for this delivery's {len(filtered_frames)} frames."
         )
 
-    athlete_id = repository.get_athlete_id_for_delivery(delivery_id)
     scored = _score(athlete_id, nudged_frame_number, ffs_frame, was_filtered)
     return _persist_and_build_report(delivery_id, scored)
