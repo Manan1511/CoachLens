@@ -38,7 +38,10 @@
           "cameraPermissionText": "CoachLens needs the camera to record and analyze deliveries.",
           "enableFrameProcessors": true
         }
-      ]
+      ],
+      "./plugins/withPoseLandmarkerModel.js",
+      "expo-secure-store",
+      "expo-font"
     ],
     "extra": {
       "eas": {
