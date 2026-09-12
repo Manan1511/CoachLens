@@ -194,13 +194,15 @@ def save_verdict(
     confidence: float | None = None,
     trigger_deltas: list[float] | None = None,
     filtered: bool | None = None,
+    trunk_tilt_deg: float | None = None,
+    trunk_tilt_confidence: float | None = None,
 ) -> str:
     """Verdicts are immutable historical records (PRD Layer 3 audit trail),
     so the observed kinematics that produced this verdict (event_frame,
-    observed_value_deg, confidence) are persisted alongside it - a later
-    GET /reports/{id} reconstructs the report from these stored values
-    rather than recomputing from raw_keypoints, which could silently drift
-    if the algorithm changes after the fact.
+    observed_value_deg, confidence, trunk_tilt_deg, trunk_tilt_confidence)
+    are persisted alongside it - a later GET /reports/{id} reconstructs the
+    report from these stored values rather than recomputing from raw_keypoints,
+    which could silently drift if the algorithm changes after the fact.
     """
     db = get_supabase()
     result = (
@@ -221,6 +223,8 @@ def save_verdict(
                 "confidence": confidence,
                 "trigger_deltas": trigger_deltas,
                 "filtered": filtered,
+                "trunk_tilt_deg": trunk_tilt_deg,
+                "trunk_tilt_confidence": trunk_tilt_confidence,
             }
         )
         .execute()
@@ -305,6 +309,8 @@ def get_report(delivery_id: str) -> CoachingReport | None:
         ffs_frame=verdict_row["event_frame"],
         front_knee_angle_deg=verdict_row["observed_value_deg"],
         front_knee_confidence=verdict_row["confidence"],
+        forward_trunk_tilt_deg=verdict_row.get("trunk_tilt_deg"),
+        trunk_tilt_confidence=verdict_row.get("trunk_tilt_confidence"),
         filtered=verdict_row.get("filtered"),
     )
 

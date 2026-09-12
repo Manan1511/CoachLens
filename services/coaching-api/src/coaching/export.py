@@ -46,6 +46,9 @@ def format_whatsapp_card(report: CoachingReport) -> str:
         if k.front_knee_angle_deg is not None:
             kinematics_parts.append(f"• Front Knee Angle: {k.front_knee_angle_deg:.1f}°")
 
+        if k.forward_trunk_tilt_deg is not None:
+            kinematics_parts.append(f"• Forward Trunk Tilt: {k.forward_trunk_tilt_deg:.1f}°")
+
         if b.fixed_reference_median_deg is not None and b.fixed_reference_iqr_deg is not None:
             kinematics_parts.append(
                 f"• Baseline Reference: {b.fixed_reference_median_deg:.1f}° (±{b.fixed_reference_iqr_deg:.1f}° IQR)"

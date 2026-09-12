@@ -159,6 +159,8 @@ def test_save_verdict_inserts_all_fields_and_returns_id(mock_db):
         event_frame=73,
         observed_value_deg=134.0,
         confidence=0.94,
+        trunk_tilt_deg=18.5,
+        trunk_tilt_confidence=0.91,
     )
 
     assert verdict_id == "verdict-uuid-1"
@@ -167,6 +169,8 @@ def test_save_verdict_inserts_all_fields_and_returns_id(mock_db):
     assert inserted["window_pattern"] == "3_OF_5_MATCHED"
     assert inserted["event_frame"] == 73
     assert inserted["observed_value_deg"] == 134.0
+    assert inserted["trunk_tilt_deg"] == 18.5
+    assert inserted["trunk_tilt_confidence"] == 0.91
 
 
 def test_get_drill_maps_row_to_proposed_action(mock_db):
@@ -215,6 +219,8 @@ def test_get_report_reconstructs_full_report(mock_db):
                         "observed_value_deg": 134.0,
                         "confidence": 0.94,
                         "metric": "front_knee_angle_deg",
+                        "trunk_tilt_deg": 18.5,
+                        "trunk_tilt_confidence": 0.91,
                         "created_at": "2026-09-12T10:15:32+00:00",
                     }
                 ],
@@ -248,6 +254,8 @@ def test_get_report_reconstructs_full_report(mock_db):
 
     assert report.verdict.status == DeliveryStatus.TECHNICAL_CONCERN
     assert report.kinematics.front_knee_angle_deg == 134.0
+    assert report.kinematics.forward_trunk_tilt_deg == 18.5
+    assert report.kinematics.trunk_tilt_confidence == 0.91
     assert report.baselines.fixed_reference_median_deg == 148.0
     assert report.proposed_action.drill_id == "DRL-SNC-012"
 

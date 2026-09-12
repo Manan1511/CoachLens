@@ -8,12 +8,12 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 
 from src.coaching import repository
-from src.interpretation.angles import front_knee_angle_deg
+from src.interpretation.angles import forward_trunk_tilt_deg, front_knee_angle_deg
 from src.interpretation.baseline import evaluate_delivery_deviation
 from src.measurement.audit import audit_frame_pacing
-from src.measurement.events import detect_ffs_frame
+from src.measurement.events import detect_ffs_frame, detect_release_frame
 from src.measurement.filtering import butterworth_filter_frames
-from src.measurement.quality import passes_quality_firewall
+from src.measurement.quality import passes_quality_firewall, passes_trunk_tilt_quality_firewall
 from src.schemas.delivery import DeliveryIngestionRequest, KeypointFrame
 from src.schemas.report import Baselines, CoachingReport, Kinematics, Verdict
 from src.schemas.status import DeliveryStatus, WindowPattern
@@ -90,7 +90,41 @@ class _Scored:
     trigger_deltas: list[float] | None
 
 
-def _score(athlete_id: str, ffs_frame_number: int, ffs_frame: KeypointFrame, filtered: bool) -> _Scored:
+def _compute_trunk_tilt(
+    frames: list[KeypointFrame] | None, ffs_frame: KeypointFrame
+) -> tuple[float | None, float | None]:
+    """Computes Forward Trunk Tilt (PRD §5 Metric 2). Evaluates at release frame
+    if wrist and shoulder landmarks are tracked, otherwise falls back to observing
+    trunk tilt at FFS if shoulder is tracked. Returns (tilt_deg, confidence).
+    """
+    if frames:
+        try:
+            release_frame_num = detect_release_frame(frames)
+            release_frame = next((f for f in frames if f.frame == release_frame_num), None)
+            if release_frame is not None and passes_trunk_tilt_quality_firewall(release_frame):
+                assert release_frame.shoulder is not None
+                tilt = forward_trunk_tilt_deg(release_frame.hip, release_frame.shoulder)
+                conf = min(release_frame.hip.conf, release_frame.shoulder.conf)
+                return tilt, conf
+        except ValueError:
+            pass
+
+    if passes_trunk_tilt_quality_firewall(ffs_frame):
+        assert ffs_frame.shoulder is not None
+        tilt = forward_trunk_tilt_deg(ffs_frame.hip, ffs_frame.shoulder)
+        conf = min(ffs_frame.hip.conf, ffs_frame.shoulder.conf)
+        return tilt, conf
+
+    return None, None
+
+
+def _score(
+    athlete_id: str,
+    ffs_frame_number: int,
+    ffs_frame: KeypointFrame,
+    filtered: bool,
+    all_frames: list[KeypointFrame] | None = None,
+) -> _Scored:
     """Pure decision logic: quality firewall -> angle -> baseline lookup ->
     interpretation. Only reads from the repository (get_baseline,
     get_rolling_history_deltas) - never writes. May raise
@@ -100,7 +134,13 @@ def _score(athlete_id: str, ffs_frame_number: int, ffs_frame: KeypointFrame, fil
     call this *before* writing the delivery row: if this raises, nothing
     has been persisted, avoiding an orphaned delivery with no verdict.
     """
-    kinematics = Kinematics(ffs_frame=ffs_frame_number, filtered=filtered)
+    trunk_tilt, trunk_tilt_conf = _compute_trunk_tilt(all_frames, ffs_frame)
+    kinematics = Kinematics(
+        ffs_frame=ffs_frame_number,
+        filtered=filtered,
+        forward_trunk_tilt_deg=trunk_tilt,
+        trunk_tilt_confidence=trunk_tilt_conf,
+    )
 
     if not passes_quality_firewall(ffs_frame):
         return _Scored(
@@ -178,6 +218,8 @@ def _persist_and_build_report(delivery_id: str, scored: _Scored) -> CoachingRepo
         confidence=scored.kinematics.front_knee_confidence,
         trigger_deltas=scored.trigger_deltas or None,
         filtered=scored.kinematics.filtered,
+        trunk_tilt_deg=scored.kinematics.forward_trunk_tilt_deg,
+        trunk_tilt_confidence=scored.kinematics.trunk_tilt_confidence,
     )
     proposed_action = repository.get_drill(scored.drill_id) if scored.drill_id else None
 
@@ -221,7 +263,7 @@ def evaluate_delivery(request: DeliveryIngestionRequest) -> CoachingReport:
     # verdict, which has a hard FK dependency on it) is ever written -
     # avoiding an orphaned delivery with no verdict and a misleading 404 on
     # a later GET /reports/{id}.
-    scored = _score(request.athlete_id, ffs_frame_number, ffs_frame, was_filtered)
+    scored = _score(request.athlete_id, ffs_frame_number, ffs_frame, was_filtered, filtered_frames)
 
     repository.save_delivery(request)
     return _persist_and_build_report(request.delivery_id, scored)
@@ -260,5 +302,5 @@ def nudge_and_reevaluate(delivery_id: str, frame_delta: int) -> CoachingReport:
             f"is out of range for this delivery's {len(filtered_frames)} frames."
         )
 
-    scored = _score(athlete_id, nudged_frame_number, ffs_frame, was_filtered)
+    scored = _score(athlete_id, nudged_frame_number, ffs_frame, was_filtered, filtered_frames)
     return _persist_and_build_report(delivery_id, scored)

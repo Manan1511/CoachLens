@@ -53,7 +53,8 @@ class FakeRepository:
     def save_verdict(self, delivery_id, metric, status, window_pattern, window_matches,
                       delta_deg, uncertainty_band_deg, summary, drill_id,
                       event_frame=None, observed_value_deg=None, confidence=None,
-                      trigger_deltas=None, filtered=None):
+                      trigger_deltas=None, filtered=None,
+                      trunk_tilt_deg=None, trunk_tilt_confidence=None):
         self.verdicts_by_delivery[delivery_id] = {
             "status": status, "delta_deg": delta_deg, "window_matches": window_matches,
         }

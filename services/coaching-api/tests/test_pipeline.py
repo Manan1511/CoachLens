@@ -248,3 +248,19 @@ def test_nudge_and_reevaluate_rejects_out_of_range_frame(monkeypatch, fake_repo)
 
     with pytest.raises(ValueError):
         pipeline.nudge_and_reevaluate("DEL-1", frame_delta=1000)
+
+
+def test_evaluate_delivery_concurrent_metrics(monkeypatch, fake_repo):
+    """Confirms both Front Knee Angle and Forward Trunk Tilt are evaluated
+    concurrently when shoulder and wrist landmarks are tracked (PRD §2, §5)."""
+    req = make_request()
+    for i, f in enumerate(req.raw_keypoints):
+        f.shoulder = Landmark(x=820, y=700, conf=0.95)
+        wrist_y = 400.0 if i == 25 else 750.0
+        f.wrist = Landmark(x=830, y=wrist_y, conf=0.92)
+
+    report = pipeline.evaluate_delivery(req)
+    assert report.kinematics.front_knee_angle_deg is not None
+    assert report.kinematics.forward_trunk_tilt_deg is not None
+    assert report.kinematics.trunk_tilt_confidence == 0.95
+
