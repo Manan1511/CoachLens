@@ -11,17 +11,34 @@
           "deliveries"
         ],
         "summary": "Ingest Delivery",
-        "description": "Placeholder wiring for Milestone 1 (contracts only). The actual\nmeasurement/interpretation/coaching pipeline is built in Milestones 3-5;\nthis exists so the OpenAPI spec reflects the real request/response shapes.",
         "operationId": "ingest_delivery_api_v1_sessions_delivery_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DeliveryIngestionRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -63,6 +80,22 @@
               "type": "string",
               "title": "Delivery Id"
             }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -72,6 +105,276 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CoachingReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/deliveries/{delivery_id}/nudge-ffs": {
+      "post": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Nudge Ffs",
+        "description": "[Nudge FFS Frame +/-1] coach control (PRD \u00a76.1).",
+        "operationId": "nudge_ffs_api_v1_deliveries__delivery_id__nudge_ffs_post",
+        "parameters": [
+          {
+            "name": "delivery_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Delivery Id"
+            }
+          },
+          {
+            "name": "frame_delta",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Frame Delta"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoachingReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/deliveries/{delivery_id}/action": {
+      "post": {
+        "tags": [
+          "coach-actions"
+        ],
+        "summary": "Record Coach Action",
+        "description": "[Approve Drill] / [Dismiss] coach controls (PRD \u00a74 Layer 3). Records\nagainst the delivery's latest verdict - human-in-the-loop feedback is an\naudit-trail append, never a mutation of the verdict itself.",
+        "operationId": "record_coach_action_api_v1_deliveries__delivery_id__action_post",
+        "parameters": [
+          {
+            "name": "delivery_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Delivery Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoachActionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Record Coach Action Api V1 Deliveries  Delivery Id  Action Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/athletes/{athlete_id}/baseline": {
+      "post": {
+        "tags": [
+          "athletes"
+        ],
+        "summary": "Confirm Baseline",
+        "description": "Coach-confirmed Fixed Reference Baseline (PRD \u00a74 Layer 2: median + IQR\nacross 8-10 un-fatigued benchmark deliveries). This endpoint just stores\nthe confirmed numbers - computing them from a batch of deliveries is a\ncoach/UI workflow step, not something this endpoint does itself.",
+        "operationId": "confirm_baseline_api_v1_athletes__athlete_id__baseline_post",
+        "parameters": [
+          {
+            "name": "athlete_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Athlete Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BaselineConfirmRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Confirm Baseline Api V1 Athletes  Athlete Id  Baseline Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/athletes/{athlete_id}/history": {
+      "get": {
+        "tags": [
+          "athletes"
+        ],
+        "summary": "Get Athlete History",
+        "operationId": "get_athlete_history_api_v1_athletes__athlete_id__history_get",
+        "parameters": [
+          {
+            "name": "athlete_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Athlete Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  },
+                  "title": "Response Get Athlete History Api V1 Athletes  Athlete Id  History Get"
                 }
               }
             }
@@ -111,6 +414,29 @@
   },
   "components": {
     "schemas": {
+      "BaselineConfirmRequest": {
+        "properties": {
+          "metric": {
+            "type": "string",
+            "title": "Metric"
+          },
+          "median_deg": {
+            "type": "number",
+            "title": "Median Deg"
+          },
+          "iqr_deg": {
+            "type": "number",
+            "title": "Iqr Deg"
+          }
+        },
+        "type": "object",
+        "required": [
+          "metric",
+          "median_deg",
+          "iqr_deg"
+        ],
+        "title": "BaselineConfirmRequest"
+      },
       "Baselines": {
         "properties": {
           "fixed_reference_median_deg": {
@@ -209,6 +535,34 @@
           "camera_roll_deg"
         ],
         "title": "CaptureMetadata"
+      },
+      "CoachActionRequest": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "APPROVE",
+              "DISMISS"
+            ],
+            "title": "Action"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "title": "CoachActionRequest"
       },
       "CoachingReport": {
         "properties": {
@@ -421,6 +775,17 @@
               }
             ],
             "title": "Trunk Tilt Confidence"
+          },
+          "filtered": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filtered"
           }
         },
         "type": "object",
@@ -532,6 +897,20 @@
             "type": "integer",
             "title": "Window Matches",
             "default": 0
+          },
+          "trigger_context_deltas": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger Context Deltas"
           },
           "summary": {
             "type": "string",

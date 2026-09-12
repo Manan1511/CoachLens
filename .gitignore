@@ -3,6 +3,8 @@
 .env.*
 !.env.example
 services/*/.env
+services/*/.env.*
+!services/*/.env.example
 
 # Node / Vite
 node_modules/
@@ -14,6 +16,7 @@ coverage/
 # Python
 __pycache__/
 *.py[cod]
+*.pyo
 .venv/
 venv/
 env/
@@ -22,8 +25,15 @@ env/
 .ruff_cache/
 *.egg-info/
 
+# Test and coverage output
+.coverage
+htmlcov/
+
 # Local tooling and operating-system files
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+
+# Logs
+*.log

@@ -11,6 +11,13 @@ class Kinematics(BaseModel):
     front_knee_confidence: float | None = None
     forward_trunk_tilt_deg: float | None = None
     trunk_tilt_confidence: float | None = None
+    filtered: bool | None = None
+    """False if the delivery had too few frames for the zero-phase
+    Butterworth filter and this angle was computed from raw, unsmoothed
+    keypoints instead (see pipeline._filtered_or_raw). None for reports
+    reconstructed via GET before this field existed - not recomputed
+    retroactively, since that could silently diverge from what was actually
+    used to produce the persisted verdict."""
 
 
 class Baselines(BaseModel):
@@ -27,6 +34,10 @@ class Verdict(BaseModel):
     status: DeliveryStatus
     window_pattern: WindowPattern
     window_matches: int = 0
+    trigger_context_deltas: list[float] | None = None
+    """The prior deltas that contributed to this verdict's window count -
+    the data behind PRD §5's "Why was this flagged?" transparency card.
+    None for FORM_BENCHMARK/DATA_SUPPRESSED, where no window was evaluated."""
     summary: str
     clinical_disclaimer: str = (
         "Non-diagnostic coaching metric. Reported athlete pain strictly voids prompts."
