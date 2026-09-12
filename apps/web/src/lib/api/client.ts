@@ -9,6 +9,7 @@ import type {
   CoachingReport,
   DeliverySummary,
   DeliveryStatus,
+  SessionStartResult,
   SessionSummary,
   WhatsAppExportResult,
 } from './types';
@@ -125,6 +126,11 @@ export const api = {
     const found = dtos.find((a) => a.id === athleteId);
     return found ? toAthlete(found) : null;
   },
+
+  /** POST .../sessions is a real, idempotent get-or-create-today's-session
+   *  call (src/coaching/routes/athletes.py) — no request body needed. */
+  startSession: (athleteId: string): Promise<SessionStartResult> =>
+    apiFetch<SessionStartResult>(`/api/v1/athletes/${athleteId}/sessions`, { method: 'POST' }),
 
   getAthleteHistory: (athleteId: string): Promise<SessionSummary[]> =>
     fetchAthleteHistory(athleteId),

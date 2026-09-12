@@ -6,6 +6,7 @@ import { CoachAuthProvider } from '@/lib/auth/coach-auth';
 import { useIntro } from '@/hooks/useIntro';
 import { useSmoothScroll } from '@/hooks/useSmoothScroll';
 import { AthleteDetailPage } from '@/routes/dashboard/AthleteDetailPage';
+import { CapturePage } from '@/routes/dashboard/CapturePage';
 import { DashboardLayout } from '@/routes/dashboard/DashboardLayout';
 import { DeliveryReportPage } from '@/routes/dashboard/DeliveryReportPage';
 import { LoginPage } from '@/routes/dashboard/LoginPage';
@@ -54,6 +55,7 @@ export function App() {
             <Route index element={<RosterPage />} />
             <Route path="athletes/:athleteId" element={<AthleteDetailPage />} />
             <Route path="deliveries/:deliveryId" element={<DeliveryReportPage />} />
+            <Route path="capture" element={<CapturePage />} />
           </Route>
         </Routes>
       </AnimationReadyProvider>

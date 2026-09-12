@@ -162,6 +162,19 @@ export interface BaselineRecord {
   confirmed_at: string | null;
 }
 
+/** Matches the real POST /api/v1/athletes/{athlete_id}/sessions response
+ *  (src/schemas/session.py's SessionResponse) exactly — get-or-create
+ *  today's session for an athlete. `created` distinguishes "first delivery
+ *  of a new session" from "quick-switched back to a player already
+ *  recorded today", which matters for the capture flow's session-pool
+ *  step (CAPTURE_PLAN.md) but not for anything else in the dashboard. */
+export interface SessionStartResult {
+  session_id: string;
+  athlete_id: string;
+  session_date: string;
+  created: boolean;
+}
+
 export const METRICS = ['front_knee_angle_deg', 'forward_trunk_tilt_deg'] as const;
 export type Metric = (typeof METRICS)[number];
 
