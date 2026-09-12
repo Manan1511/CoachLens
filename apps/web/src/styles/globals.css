@@ -239,19 +239,6 @@
     color: var(--color-accent-blue);
   }
 
-  /* ── Steps arc draw-on ──
-     `pathLength="1"` normalizes the path so stroke-dasharray/offset work
-     in fractions regardless of the arc's real geometry — no JS measuring
-     of getTotalLength() needed. */
-  .draw-path {
-    stroke-dashoffset: 1;
-    transition: stroke-dashoffset 1.4s var(--ease-out-expo);
-  }
-
-  .reveal[data-visible='true'] .draw-path {
-    stroke-dashoffset: 0;
-  }
-
   /* ── Reveal ── */
   .reveal {
     opacity: 0;

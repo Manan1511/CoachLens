@@ -53,12 +53,6 @@ export interface SpecCard {
   desc: string;
 }
 
-export interface CtaCard {
-  id: string;
-  title: string;
-  href: string;
-}
-
 export interface FooterColumn {
   title: string;
   links: { label: string; href: string }[];

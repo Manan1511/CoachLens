@@ -1,20 +1,12 @@
-import type { CtaCard, FooterColumn } from '@/types';
+import type { FooterColumn } from '@/types';
 import { CONTACT_EMAIL } from './nav';
 
-/** Milestone 6 replaces these mailto links with a real capture form
- *  once there's an endpoint to post to. */
-export const CTA_CARDS: CtaCard[] = [
-  {
-    id: 'cta-access',
-    title: 'Try it with your squad',
-    href: `mailto:${CONTACT_EMAIL}?subject=CoachLens%20early%20access`,
-  },
-  {
-    id: 'cta-prd',
-    title: 'Join the field trial',
-    href: `mailto:${CONTACT_EMAIL}?subject=CoachLens%20field%20trial`,
-  },
-];
+/** The closing pitch — one card, not two, pointing straight at sign-up
+ *  rather than a mailto (a coach can just create an account now). */
+export const CTA_CARD = {
+  title: 'Try it with your squad',
+  to: '/app/login?mode=sign-up',
+} as const;
 
 export const FOOTER_COLUMNS: FooterColumn[] = [
   {

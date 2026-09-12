@@ -1,4 +1,3 @@
-import { FloatingCta } from '@/components/layout/FloatingCta';
 import { Footer } from '@/components/layout/Footer';
 import { Nav } from '@/components/layout/Nav';
 import { Advantages } from '@/components/sections/Advantages';
@@ -28,7 +27,6 @@ export function MarketingPage() {
         <CtaSection />
       </main>
       <Footer />
-      <FloatingCta />
     </>
   );
 }
