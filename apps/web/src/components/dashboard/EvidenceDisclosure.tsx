@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { DeltaGauge } from './DeltaGauge';
 import type { Baselines, Kinematics, Verdict } from '@/lib/api/types';
 import { formatDeg } from '@/lib/stats';
 
@@ -35,7 +34,7 @@ export function EvidenceDisclosure({
         className="flex w-full items-center justify-between text-left"
       >
         <span className="text-small font-medium text-ink">Show the evidence</span>
-        <span className="text-caption uppercase tracking-[0.08em] text-ink-dim">
+        <span className="text-caption uppercase tracking-[0.08em] text-ink-secondary">
           {open ? 'Hide' : 'Show'}
         </span>
       </button>
@@ -67,19 +66,40 @@ export function EvidenceDisclosure({
           <Row label="Window pattern" value={WINDOW_LABELS[verdict.window_pattern]} />
           <Row label="Matches in window" value={String(verdict.window_matches)} />
 
-          {baselines.delta_deg !== null && baselines.uncertainty_band_deg !== null && (
-            <div className="col-span-2 max-mobile:col-span-1">
-              <p className="mb-1.5 text-ink-dim">Delta from baseline, against the uncertainty band</p>
-              <DeltaGauge delta={baselines.delta_deg} band={baselines.uncertainty_band_deg} />
-            </div>
-          )}
-
           {verdict.trigger_context_deltas && verdict.trigger_context_deltas.length > 0 && (
-            <div className="col-span-2">
-              <p className="mb-1 text-ink-dim">Contributing deltas</p>
-              <p className="text-ink">
-                {verdict.trigger_context_deltas.map((d) => formatDeg(d)).join(', ')}
+            <div className="col-span-2 max-mobile:col-span-1">
+              <p className="mb-1.5 text-ink-secondary">
+                Contributing deltas — the rolling window behind "{WINDOW_LABELS[verdict.window_pattern]}"
               </p>
+              <div className="flex flex-wrap gap-1.5">
+                {verdict.trigger_context_deltas.map((d, i) => {
+                  const band = baselines.uncertainty_band_deg;
+                  const withinBand = band !== null ? Math.abs(d) <= band : null;
+                  return (
+                    <span
+                      key={i}
+                      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-caption font-medium ${
+                        withinBand === null
+                          ? 'border-line text-ink-secondary'
+                          : withinBand
+                            ? 'border-status-green/30 text-status-green'
+                            : 'border-status-red/30 text-status-red'
+                      }`}
+                    >
+                      <span
+                        className={`size-1.5 rounded-full ${
+                          withinBand === null
+                            ? 'bg-ink-muted'
+                            : withinBand
+                              ? 'bg-status-green'
+                              : 'bg-status-red'
+                        }`}
+                      />
+                      {formatDeg(d)}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -91,7 +111,7 @@ export function EvidenceDisclosure({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-sm">
-      <span className="text-ink-dim">{label}</span>
+      <span className="text-ink-secondary">{label}</span>
       <span className="font-medium text-ink">{value}</span>
     </div>
   );

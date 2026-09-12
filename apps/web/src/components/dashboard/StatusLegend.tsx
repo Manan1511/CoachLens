@@ -14,7 +14,7 @@ const DOT_CLASS: Record<'green' | 'yellow' | 'red' | 'muted', string> = {
  *  time they see a bare coloured dot instead of a labelled pill. */
 export function StatusLegend({ statuses }: { statuses: DeliveryStatus[] }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-ink-dim">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-ink-secondary">
       {statuses.map((status) => (
         <span key={status} className="flex items-center gap-1.5">
           <span className={`size-1.5 rounded-full ${DOT_CLASS[VERDICT_COPY[status].tone]}`} />

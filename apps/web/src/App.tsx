@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Route, Routes, useLocation } from 'react-router';
 import { IntroOverlay } from '@/components/layout/IntroOverlay';
 import { AnimationReadyProvider } from '@/lib/animation-context';
@@ -20,25 +20,29 @@ export function App() {
   const eyebrowRef = useRef<HTMLParagraphElement>(null);
   const brandRef = useRef<HTMLDivElement>(null);
 
+  // Whether to play the intro at all is decided once, from whichever route
+  // the visitor actually landed on — not the live pathname. The overlay
+  // below is always mounted (never conditional on isMarketing) so a coach
+  // navigating from the dashboard back to "/" later finds it already
+  // resolved rather than a freshly-mounted, never-animated black screen.
+  const [playIntro] = useState(isMarketing);
+
   // Smooth scroll and the intro belong to the marketing page only — the
   // dashboard is a standard nav+content app, not a scroll narrative. See
   // DESIGN.md §7.
   useSmoothScroll(isMarketing);
-  const introDone = useIntro({
-    overlay: overlayRef,
-    eyebrow: eyebrowRef,
-    brand: brandRef,
-  });
+  const introDone = useIntro(
+    {
+      overlay: overlayRef,
+      eyebrow: eyebrowRef,
+      brand: brandRef,
+    },
+    playIntro,
+  );
 
   return (
     <CoachAuthProvider>
-      {isMarketing && (
-        <IntroOverlay
-          overlayRef={overlayRef}
-          eyebrowRef={eyebrowRef}
-          brandRef={brandRef}
-        />
-      )}
+      <IntroOverlay overlayRef={overlayRef} eyebrowRef={eyebrowRef} brandRef={brandRef} />
 
       {/* Scroll animations stay parked until the overlay is gone. */}
       <AnimationReadyProvider ready={introDone}>

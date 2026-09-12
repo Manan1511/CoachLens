@@ -6,7 +6,8 @@ import { DeltaTrendChart, type TrendPoint } from '@/components/dashboard/DeltaTr
 import { FlagHistory } from '@/components/dashboard/FlagHistory';
 import { SessionTimeline } from '@/components/dashboard/SessionTimeline';
 import { api } from '@/lib/api/client';
-import { computeDataQuality } from '@/lib/analytics';
+import { computeDataQuality, countByStatus } from '@/lib/analytics';
+import { StatusDistributionBar } from '@/components/dashboard/StatusDistributionBar';
 import { useAsync } from '@/hooks/useAsync';
 import { METRICS, METRIC_LABELS, type Athlete, type BaselineRecord, type SessionSummary } from '@/lib/api/types';
 import { formatDate } from '@/lib/stats';
@@ -55,18 +56,22 @@ export function AthleteDetailPage() {
   const { athleteId } = useParams<{ athleteId: string }>();
   const { data, loading, error, reload } = useAsync(() => loadAthlete(athleteId!), [athleteId]);
 
-  if (loading) return <p className="text-ink-dim">Loading athlete…</p>;
+  if (loading) return <p className="text-ink-secondary">Loading athlete…</p>;
   if (error || !data) return <p className="text-status-red">Couldn't find that athlete.</p>;
 
   const { athlete, sessions, baselines } = data;
   const kneeBaseline = baselines[METRICS.indexOf('front_knee_angle_deg')];
   const quality = computeDataQuality(sessions);
+  // Same formula as the backend's outlier_threshold (src/interpretation/baseline.py) —
+  // shared by the trend chart, session timeline, and flag history so every
+  // delta gauge on this page reads against the same band.
+  const uncertaintyBand = kneeBaseline ? Math.max(3.2, kneeBaseline.iqr_deg * 1.5) : null;
 
   return (
-    <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-[14rem_1fr_22rem] lg:items-start lg:gap-10">
+    <div className="mx-auto max-w-[84rem] lg:grid lg:grid-cols-[14rem_1fr_22rem] lg:items-start lg:gap-20">
       {/* Left — identity, pinned */}
       <div className="mb-lg lg:sticky lg:top-28 lg:mb-0">
-        <Link to="/app" className="mb-md inline-block text-small text-ink-dim hover:text-ink">
+        <Link to="/app" className="mb-md inline-block text-small text-ink-secondary hover:text-ink">
           ← Roster
         </Link>
 
@@ -79,14 +84,17 @@ export function AthleteDetailPage() {
         <AthleteMeta bowling_arm={athlete.bowling_arm} />
 
         {quality.totalDeliveries > 0 && (
-          <p className="mt-md border-t border-line pt-md text-caption text-ink-dim">
-            {quality.suppressedPct !== null && (
-              <>{Math.round(quality.suppressedPct)}% suppressed for low confidence</>
-            )}
+          <div className="mt-md border-t border-line pt-md">
+            <p className="mb-1.5 text-caption font-bold uppercase tracking-[0.1em] text-ink-secondary">
+              All-time verdicts
+            </p>
+            <StatusDistributionBar counts={countByStatus(sessions.flatMap((s) => s.deliveries))} />
             {quality.avgConfidence !== null && (
-              <> · {Math.round(quality.avgConfidence * 100)}% avg confidence overall</>
+              <p className="mt-1.5 text-caption text-ink-secondary">
+                {Math.round(quality.avgConfidence * 100)}% avg confidence overall
+              </p>
             )}
-          </p>
+          </div>
         )}
       </div>
 
@@ -114,19 +122,19 @@ export function AthleteDetailPage() {
           <h2 className="mb-sm text-caption font-bold uppercase tracking-[0.1em] text-ink-secondary">
             Sessions
           </h2>
-          <SessionTimeline sessions={sessions} />
+          <SessionTimeline sessions={sessions} uncertaintyBand={uncertaintyBand} />
         </section>
 
         <section>
           <h2 className="mb-1 text-caption font-bold uppercase tracking-[0.1em] text-ink-secondary">
             Flags & actions
           </h2>
-          <FlagHistory sessions={sessions} />
+          <FlagHistory sessions={sessions} uncertaintyBand={uncertaintyBand} />
         </section>
       </div>
 
       {/* Right — trend chart, pinned */}
-      {kneeBaseline && (
+      {kneeBaseline && uncertaintyBand !== null && (
         <div className="mt-lg lg:sticky lg:top-28 lg:mt-0">
           <p className="mb-0.5 text-caption font-bold uppercase tracking-[0.1em] text-ink-secondary">
             Trend
@@ -136,9 +144,7 @@ export function AthleteDetailPage() {
           </h2>
           <DeltaTrendChart
             points={toTrendPoints(sessions)}
-            // Matches the backend's outlier_threshold: max(3.2, 1.5 x IQR)
-            // (src/interpretation/baseline.py) — kept in sync by hand.
-            uncertaintyBand={Math.max(3.2, kneeBaseline.iqr_deg * 1.5)}
+            uncertaintyBand={uncertaintyBand}
           />
         </div>
       )}

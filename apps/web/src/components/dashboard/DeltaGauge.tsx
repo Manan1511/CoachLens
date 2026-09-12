@@ -4,7 +4,18 @@ import { formatDeg } from '@/lib/stats';
  *  delivery" — a shaded centre zone for the band, a marker for the observed
  *  delta. Div-based rather than SVG since it's one value, not a series;
  *  DeltaTrendChart (the athlete page's history chart) is the SVG one. */
-export function DeltaGauge({ delta, band }: { delta: number; band: number }) {
+export function DeltaGauge({
+  delta,
+  band,
+  showValue = true,
+}: {
+  delta: number;
+  band: number;
+  /** Off when the delta's already spelled out in text right next to the
+   *  gauge (e.g. FlagHistory's row) — no point printing the same number
+   *  twice in one row. */
+  showValue?: boolean;
+}) {
   const range = Math.max(band, Math.abs(delta)) * 1.3;
   const toPercent = (v: number) => 50 + (v / range) * 50;
 
@@ -34,7 +45,9 @@ export function DeltaGauge({ delta, band }: { delta: number; band: number }) {
           style={{ left: `${markerPos}%` }}
         />
       </div>
-      <span className="w-12 shrink-0 text-right font-medium text-ink">{formatDeg(delta)}</span>
+      {showValue && (
+        <span className="w-12 shrink-0 text-right font-medium text-ink">{formatDeg(delta)}</span>
+      )}
     </div>
   );
 }

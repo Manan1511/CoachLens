@@ -45,7 +45,7 @@ export function WhatsAppExport({ deliveryId }: { deliveryId: string }) {
         className="flex w-full items-center justify-between text-left"
       >
         <span className="text-small font-medium text-ink">Export to WhatsApp</span>
-        <span className="text-caption uppercase tracking-[0.08em] text-ink-dim">
+        <span className="text-caption uppercase tracking-[0.08em] text-ink-secondary">
           {open ? 'Hide' : 'Show'}
         </span>
       </button>
@@ -53,7 +53,7 @@ export function WhatsAppExport({ deliveryId }: { deliveryId: string }) {
       {open && (
         <div className="mt-md">
           {loading || text === null ? (
-            <p className="text-small text-ink-dim">Preparing card…</p>
+            <p className="text-small text-ink-secondary">Preparing card…</p>
           ) : (
             <>
               <pre className="mb-sm whitespace-pre-wrap rounded-md border border-line bg-canvas p-3 text-small text-ink-secondary">

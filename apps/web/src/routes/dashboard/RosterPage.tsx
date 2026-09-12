@@ -1,5 +1,7 @@
 import { AthleteCard } from '@/components/dashboard/AthleteCard';
+import { StatusDistributionBar } from '@/components/dashboard/StatusDistributionBar';
 import { api } from '@/lib/api/client';
+import { countByStatus } from '@/lib/analytics';
 import { useAsync } from '@/hooks/useAsync';
 import type { Athlete, DeliveryStatus, SessionSummary } from '@/lib/api/types';
 
@@ -7,6 +9,7 @@ interface RosterRow {
   athlete: Athlete;
   lastSessionDate: string | null;
   latestStatus: DeliveryStatus | null;
+  statusCounts: Partial<Record<DeliveryStatus, number>>;
 }
 
 /** Lower sorts first. The real GET /api/v1/athletes is name-ordered (it
@@ -37,6 +40,7 @@ async function loadRoster(): Promise<RosterRow[]> {
       athlete,
       lastSessionDate: lastSession?.session_date ?? null,
       latestStatus: lastDelivery?.latest_status ?? null,
+      statusCounts: countByStatus(history.flatMap((s) => s.deliveries)),
     };
   });
 
@@ -53,6 +57,11 @@ export function RosterPage() {
     rows?.filter((r) => r.latestStatus === 'TECHNICAL_CONCERN' || r.latestStatus === 'MECHANICAL_WATCH')
       .length ?? 0;
 
+  const latestStatusCounts = rows?.reduce<Partial<Record<DeliveryStatus, number>>>((counts, row) => {
+    if (row.latestStatus) counts[row.latestStatus] = (counts[row.latestStatus] ?? 0) + 1;
+    return counts;
+  }, {});
+
   return (
     <div className="mx-auto max-w-[42rem]">
       <h1 className="mb-xs text-h2">Roster</h1>
@@ -64,7 +73,16 @@ export function RosterPage() {
           : 'Athletes across your sessions.'}
       </p>
 
-      {loading && <p className="text-ink-dim">Loading roster…</p>}
+      {latestStatusCounts && Object.keys(latestStatusCounts).length > 0 && (
+        <div className="mb-lg">
+          <p className="mb-1.5 text-caption font-bold uppercase tracking-[0.1em] text-ink-secondary">
+            Team — latest verdict per athlete
+          </p>
+          <StatusDistributionBar counts={latestStatusCounts} />
+        </div>
+      )}
+
+      {loading && <p className="text-ink-secondary">Loading roster…</p>}
       {error && <p className="text-status-red">Couldn't load the roster.</p>}
 
       {rows && (
@@ -75,6 +93,7 @@ export function RosterPage() {
               athlete={row.athlete}
               lastSessionDate={row.lastSessionDate}
               latestStatus={row.latestStatus}
+              statusCounts={row.statusCounts}
             />
           ))}
         </div>

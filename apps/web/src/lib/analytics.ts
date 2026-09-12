@@ -15,15 +15,25 @@ export interface SessionStats {
  *  GET .../history response yet (see the comment on DeliverySummary in
  *  lib/api/types.ts) so this quietly returns null for it until that select
  *  is extended, rather than pretending a number exists. */
-export function computeSessionStats(deliveries: DeliverySummary[]): SessionStats {
+/** Shared by per-session stats, the athlete-level distribution bar, and the
+ *  roster-wide overview strip — one place that counts deliveries by verdict
+ *  status rather than three copies of the same loop. */
+export function countByStatus(deliveries: DeliverySummary[]): Partial<Record<DeliveryStatus, number>> {
   const byStatus: Partial<Record<DeliveryStatus, number>> = {};
-  let confidenceSum = 0;
-  let confidenceCount = 0;
-
   for (const delivery of deliveries) {
     if (delivery.latest_status) {
       byStatus[delivery.latest_status] = (byStatus[delivery.latest_status] ?? 0) + 1;
     }
+  }
+  return byStatus;
+}
+
+export function computeSessionStats(deliveries: DeliverySummary[]): SessionStats {
+  const byStatus = countByStatus(deliveries);
+  let confidenceSum = 0;
+  let confidenceCount = 0;
+
+  for (const delivery of deliveries) {
     if (delivery.confidence !== null) {
       confidenceSum += delivery.confidence;
       confidenceCount += 1;

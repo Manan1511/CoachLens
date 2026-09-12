@@ -2,13 +2,16 @@ import type { ReactNode } from 'react';
 
 type Tone = 'accent' | 'green' | 'yellow' | 'red' | 'muted';
 
+/** Tint/border opacity is deliberately quiet — a list with several of these
+ *  side by side (roster, session timeline) should read as status labels,
+ *  not as five separate loud alerts stacked on top of each other. */
 const TONES: Record<Tone, string> = {
   accent: 'bg-white/6 text-ink border-white/16',
-  green: 'bg-status-green/10 text-status-green border-status-green/22',
-  yellow: 'bg-status-yellow/10 text-status-yellow border-status-yellow/22',
+  green: 'bg-status-green/6 text-status-green border-status-green/14',
+  yellow: 'bg-status-yellow/6 text-status-yellow border-status-yellow/14',
   /** Added for the dashboard's fourth and fifth verdict states — the
    *  marketing site's status-panel mockup only ever needed green/yellow. */
-  red: 'bg-status-red/10 text-status-red border-status-red/22',
+  red: 'bg-status-red/6 text-status-red border-status-red/14',
   muted: 'bg-white/4 text-ink-dim border-line',
 };
 

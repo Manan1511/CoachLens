@@ -54,10 +54,10 @@ export function ActionBar({
     <div className="border-t border-line pt-md">
       <p className="mb-1 text-small font-medium text-ink">{action.title}</p>
       <p className="mb-sm text-small text-ink-secondary">{action.prescription}</p>
-      <p className="mb-sm text-caption text-ink-dim">{action.credential}</p>
+      <p className="mb-sm text-caption text-ink-secondary">{action.credential}</p>
 
       {action.contraindications.length > 0 && (
-        <p className="mb-md text-caption text-ink-dim">
+        <p className="mb-md text-caption text-ink-secondary">
           Informational only, not a clearance check — {action.contraindications.join('; ')}
         </p>
       )}
@@ -67,7 +67,7 @@ export function ActionBar({
           <p className="text-small font-medium text-ink">
             {actioned === 'APPROVE' ? 'Drill approved.' : 'Flag dismissed.'}
           </p>
-          {actionNote && <p className="mt-0.5 text-caption text-ink-dim">"{actionNote}"</p>}
+          {actionNote && <p className="mt-0.5 text-caption text-ink-secondary">"{actionNote}"</p>}
         </div>
       ) : confirming ? (
         <div>
@@ -81,7 +81,7 @@ export function ActionBar({
                   className={`rounded-full border px-3 py-1 text-caption transition-colors ${
                     note === reason
                       ? 'border-line-strong bg-white/8 text-ink'
-                      : 'border-line text-ink-dim hover:text-ink'
+                      : 'border-line text-ink-secondary hover:text-ink'
                   }`}
                 >
                   {reason}

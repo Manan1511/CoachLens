@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { LogoMark } from '@/components/icons';
+import { LogoMark, Wordmark } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { NAV_LINKS } from '@/content/nav';
 import { useActiveSection } from '@/hooks/useActiveSection';
@@ -42,9 +42,7 @@ export function Nav() {
             }}
           >
             <LogoMark className="size-[26px] shrink-0" />
-            <span className="font-heading font-semibold tracking-[-0.025em]">
-              <span className="font-normal">Coach</span>Lens
-            </span>
+            <Wordmark className="font-heading font-semibold tracking-[-0.025em]" />
           </a>
 
           <div className="flex items-center gap-1 rounded-full border border-line bg-white/3 p-1 max-tablet:hidden">

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
-import { Navigate, useNavigate } from 'react-router';
+import { Link, Navigate, useNavigate } from 'react-router';
 import { Button } from '@/components/ui/Button';
-import { LogoMark } from '@/components/icons';
+import { LogoMark, Wordmark } from '@/components/icons';
 import { useCoach } from '@/lib/auth/coach-auth';
 
 type Mode = 'sign-in' | 'sign-up';
@@ -73,12 +73,14 @@ export function LoginPage() {
   if (needsConfirmation) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-canvas px-[var(--container-padding)]">
-        <div className="w-full max-w-[24rem] rounded-lg border border-line bg-surface p-lg text-center">
+        <div className="w-full max-w-[24rem]">
+        <Link to="/" className="mb-md inline-block text-small text-ink-secondary hover:text-ink">
+          ← Back to site
+        </Link>
+        <div className="rounded-lg border border-line bg-surface p-lg text-center">
           <div className="mb-lg flex items-center justify-center gap-2.5">
             <LogoMark className="size-6 shrink-0 text-ink" />
-            <span className="font-heading text-h4 font-semibold tracking-[-0.02em] text-ink">
-              <span className="font-normal">Coach</span>Lens
-            </span>
+            <Wordmark className="font-heading text-h4 font-semibold tracking-[-0.02em] text-ink" />
           </div>
           <p className="mb-sm text-body text-ink">Check your email</p>
           <p className="text-small text-ink-secondary">
@@ -88,10 +90,11 @@ export function LoginPage() {
           <button
             type="button"
             onClick={() => switchMode('sign-in')}
-            className="mt-md text-small text-ink-dim underline hover:text-ink"
+            className="mt-md text-small text-ink-secondary underline hover:text-ink"
           >
             Back to sign in
           </button>
+        </div>
         </div>
       </div>
     );
@@ -99,15 +102,21 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-canvas px-[var(--container-padding)]">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-[24rem] rounded-lg border border-line bg-surface p-lg"
-      >
+      <div className="w-full max-w-[24rem]">
+        <Link
+          to="/"
+          className="mb-md inline-block text-small text-ink-secondary hover:text-ink"
+        >
+          ← Back to site
+        </Link>
+
+        <form
+          onSubmit={handleSubmit}
+          className="rounded-lg border border-line bg-surface p-lg"
+        >
         <div className="mb-lg flex items-center gap-2.5">
           <LogoMark className="size-6 shrink-0 text-ink" />
-          <span className="font-heading text-h4 font-semibold tracking-[-0.02em] text-ink">
-            <span className="font-normal">Coach</span>Lens
-          </span>
+          <Wordmark className="font-heading text-h4 font-semibold tracking-[-0.02em] text-ink" />
         </div>
 
         <div className="mb-md flex gap-1 rounded-full border border-line bg-canvas p-1">
@@ -115,7 +124,7 @@ export function LoginPage() {
             type="button"
             onClick={() => switchMode('sign-in')}
             className={`flex-1 rounded-full py-1.5 text-caption font-semibold uppercase tracking-[0.08em] transition-colors ${
-              mode === 'sign-in' ? 'bg-white/8 text-ink' : 'text-ink-dim hover:text-ink'
+              mode === 'sign-in' ? 'bg-white/8 text-ink' : 'text-ink-secondary hover:text-ink'
             }`}
           >
             Sign in
@@ -124,7 +133,7 @@ export function LoginPage() {
             type="button"
             onClick={() => switchMode('sign-up')}
             className={`flex-1 rounded-full py-1.5 text-caption font-semibold uppercase tracking-[0.08em] transition-colors ${
-              mode === 'sign-up' ? 'bg-white/8 text-ink' : 'text-ink-dim hover:text-ink'
+              mode === 'sign-up' ? 'bg-white/8 text-ink' : 'text-ink-secondary hover:text-ink'
             }`}
           >
             Sign up
@@ -187,7 +196,8 @@ export function LoginPage() {
               ? 'Sign in'
               : 'Create account'}
         </Button>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }

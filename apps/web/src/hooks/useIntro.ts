@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from 'react';
+import { useLayoutEffect, useState, type RefObject } from 'react';
 import { gsap } from '@/lib/gsap';
 import { getLenis } from '@/lib/lenis';
 import { usePrefersReducedMotion } from './usePrefersReducedMotion';
@@ -13,12 +13,22 @@ interface IntroRefs {
  *
  *  Holds the page still while it plays and always resolves: a 6s safety
  *  timeout means a stalled animation can never trap a visitor on a black
- *  screen. Returns `done`, which gates every scroll animation on the page. */
-export function useIntro({ overlay, eyebrow, brand }: IntroRefs) {
+ *  screen. Returns `done`, which gates every scroll animation on the page.
+ *
+ *  `shouldPlay` is fixed at the app's *first* route, not the live one — the
+ *  overlay itself is always mounted (see App.tsx) so a coach bouncing
+ *  between the dashboard and "/" later never finds it stuck mid-animation
+ *  or reset to its opaque starting state; it only ever plays once, and only
+ *  when the visitor's actual entry point was the marketing page. Landing
+ *  straight on the dashboard skips it outright rather than flashing a
+ *  marketing intro over a login screen. Uses a layout effect so that skip
+ *  (or, without it, the animation's very first frame) is applied before the
+ *  browser paints — a plain effect would let one opaque frame flash first. */
+export function useIntro({ overlay, eyebrow, brand }: IntroRefs, shouldPlay: boolean) {
   const [done, setDone] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     // No "already played" guard here: StrictMode mounts, cleans up, then
     // mounts again, and a guard would leave the killed first timeline as
     // the only one — stranding the visitor on the overlay. Letting the
@@ -33,6 +43,11 @@ export function useIntro({ overlay, eyebrow, brand }: IntroRefs) {
       document.body.style.overflow = '';
       setDone(true);
     };
+
+    if (!shouldPlay) {
+      finish();
+      return;
+    }
 
     if (!overlayEl || !eyebrowEl || !brandEl || reducedMotion) {
       gsap.set([eyebrowEl, brandEl].filter(Boolean), { opacity: 1, y: 0 });
@@ -68,7 +83,7 @@ export function useIntro({ overlay, eyebrow, brand }: IntroRefs) {
       clearTimeout(safety);
       tl.kill();
     };
-  }, [overlay, eyebrow, brand, reducedMotion]);
+  }, [overlay, eyebrow, brand, reducedMotion, shouldPlay]);
 
   return done;
 }

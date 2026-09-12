@@ -1,5 +1,5 @@
 import { Navigate, NavLink, Outlet } from 'react-router';
-import { LogoMark } from '@/components/icons';
+import { LogoMark, Wordmark } from '@/components/icons';
 import { useCoach } from '@/lib/auth/coach-auth';
 
 /** The dashboard shell: a floating top nav (not a sidebar) and a full-width
@@ -28,9 +28,7 @@ export function DashboardLayout() {
             aria-label="Back to CoachLens site"
           >
             <LogoMark className="size-5 shrink-0" />
-            <span className="hidden font-heading font-semibold tracking-[-0.02em] sm:inline">
-              <span className="font-normal">Coach</span>Lens
-            </span>
+            <Wordmark className="hidden font-heading font-semibold tracking-[-0.02em] sm:inline" />
           </NavLink>
 
           <NavLink
@@ -52,7 +50,7 @@ export function DashboardLayout() {
             <button
               type="button"
               onClick={signOut}
-              className="text-caption font-semibold uppercase tracking-[0.08em] text-ink-dim transition-colors duration-200 hover:text-ink"
+              className="text-caption font-semibold uppercase tracking-[0.08em] text-ink-secondary transition-colors duration-200 hover:text-ink"
             >
               Sign out
             </button>

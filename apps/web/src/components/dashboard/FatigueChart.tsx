@@ -18,10 +18,12 @@ const PAD = 12;
  *
  *  No shaded band here: trunk tilt has no confirmed baseline in this
  *  system (BACKEND_PLAN.md — only front-knee angle is ever scored), so
- *  this plots the raw observed value, not a deviation. The point markers
- *  still pick up colour from that ball's overall verdict status where one
- *  exists, since a flag on the delivery is still relevant context even
- *  though it was triggered by the knee metric, not this one. */
+ *  this plots the raw observed value, not a deviation. The dashed line is
+ *  this spell's own mean, not a baseline — it's there so a drift shows up
+ *  as the line pulling away from its own average, not just as a wiggle.
+ *  The point markers still pick up colour from that ball's overall verdict
+ *  status where one exists, since a flag on the delivery is still relevant
+ *  context even though it was triggered by the knee metric, not this one. */
 export function FatigueChart({ points }: { points: FatiguePoint[] }) {
   const values = points.map((p) => p.trunkTilt).filter((v): v is number => v !== null);
   if (values.length < 2) return null;
@@ -40,6 +42,17 @@ export function FatigueChart({ points }: { points: FatiguePoint[] }) {
     .map((p, i) => (p.trunkTilt !== null ? { x: x(i), y: y(p.trunkTilt) } : null))
     .filter((c): c is { x: number; y: number } => c !== null);
 
+  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const meanY = y(mean);
+  // A closed polygon under the line, floored at the chart's bottom edge —
+  // gives the sparkline visual weight so a drift reads as a shape filling
+  // in or draining out, not just a thin wire.
+  const areaPoints = [
+    { x: coords[0]?.x ?? PAD, y: HEIGHT - PAD },
+    ...coords,
+    { x: coords[coords.length - 1]?.x ?? WIDTH - PAD, y: HEIGHT - PAD },
+  ];
+
   const STATUS_COLOR: Record<DeliveryStatus, string> = {
     FORM_BENCHMARK: 'var(--color-status-green)',
     MECHANICAL_WATCH: 'var(--color-status-yellow)',
@@ -50,7 +63,7 @@ export function FatigueChart({ points }: { points: FatiguePoint[] }) {
 
   return (
     <div className="mb-1.5">
-      <p className="mb-1 text-caption text-ink-dim">Trunk tilt within this spell, ball by ball</p>
+      <p className="mb-1 text-caption text-ink-secondary">Trunk tilt within this spell, ball by ball</p>
       <div className="flex items-center gap-sm">
         <svg
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
@@ -58,6 +71,16 @@ export function FatigueChart({ points }: { points: FatiguePoint[] }) {
           role="img"
           aria-label="Trunk tilt within this spell"
         >
+          <polygon points={areaPoints.map((c) => `${c.x},${c.y}`).join(' ')} fill="rgba(255,255,255,0.06)" />
+          <line
+            x1={PAD}
+            y1={meanY}
+            x2={WIDTH - PAD}
+            y2={meanY}
+            stroke="var(--color-line)"
+            strokeWidth={1}
+            strokeDasharray="3 3"
+          />
           <polyline
             points={coords.map((c) => `${c.x},${c.y}`).join(' ')}
             fill="none"
@@ -80,7 +103,7 @@ export function FatigueChart({ points }: { points: FatiguePoint[] }) {
             ),
           )}
         </svg>
-        <span className="shrink-0 text-caption text-ink-dim">
+        <span className="shrink-0 text-caption text-ink-secondary">
           {formatDeg(values[0])} → {formatDeg(values[values.length - 1])}
         </span>
       </div>

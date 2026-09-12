@@ -29,7 +29,7 @@ export function NudgeFfsControl({
     <div className="flex items-center justify-between border-t border-line py-md">
       <div>
         <p className="text-small font-medium text-ink">Nudge FFS frame</p>
-        <p className="text-caption text-ink-dim">Currently frame {currentFrame}</p>
+        <p className="text-caption text-ink-secondary">Currently frame {currentFrame}</p>
       </div>
       <div className="flex items-center gap-1">
         <button

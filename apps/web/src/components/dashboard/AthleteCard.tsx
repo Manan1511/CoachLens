@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { Badge } from '@/components/ui/Badge';
 import { StatusBadge } from './StatusBadge';
+import { StatusDistributionBar } from './StatusDistributionBar';
 import type { Athlete, DeliveryStatus } from '@/lib/api/types';
 import { formatDate } from '@/lib/stats';
 
@@ -19,11 +20,18 @@ export function AthleteCard({
   athlete,
   lastSessionDate,
   latestStatus,
+  statusCounts,
 }: {
   athlete: Athlete;
   lastSessionDate: string | null;
   latestStatus: DeliveryStatus | null;
+  /** Full-history status breakdown, not just the latest ball — the badge
+   *  above already answers "what just happened"; this bar answers "what's
+   *  this athlete's pattern been overall". */
+  statusCounts: Partial<Record<DeliveryStatus, number>>;
 }) {
+  const hasHistory = Object.keys(statusCounts).length > 0;
+
   return (
     <Link
       to={`/app/athletes/${athlete.id}`}
@@ -40,12 +48,14 @@ export function AthleteCard({
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-sm">
-        <p className="text-small text-ink-dim">
+      <div className="mb-2 flex items-center justify-between gap-sm">
+        <p className="text-small text-ink-secondary">
           {lastSessionDate ? `Last session ${formatDate(lastSessionDate)}` : 'No sessions yet'}
         </p>
         {athlete.consent_blocked && <Badge tone="yellow">Consent needed</Badge>}
       </div>
+
+      {hasHistory && <StatusDistributionBar counts={statusCounts} compact />}
     </Link>
   );
 }

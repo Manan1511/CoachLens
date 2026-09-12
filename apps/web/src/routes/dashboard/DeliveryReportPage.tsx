@@ -27,7 +27,7 @@ export function DeliveryReportPage() {
   const { deliveryId } = useParams<{ deliveryId: string }>();
   const { data, loading, error, reload } = useAsync(() => loadReport(deliveryId!), [deliveryId]);
 
-  if (loading) return <p className="text-ink-dim">Loading report…</p>;
+  if (loading) return <p className="text-ink-secondary">Loading report…</p>;
   if (error || !data) return <p className="text-status-red">Couldn't find that delivery.</p>;
 
   const { report, actioned } = data;
@@ -36,16 +36,16 @@ export function DeliveryReportPage() {
 
   return (
     <div className="mx-auto max-w-[42rem]">
-      <Link to="/app" className="mb-md inline-block text-small text-ink-dim hover:text-ink">
+      <Link to="/app" className="mb-md inline-block text-small text-ink-secondary hover:text-ink">
         ← Roster
       </Link>
 
-      <p className="mb-sm text-caption uppercase tracking-[0.1em] text-ink-dim">
+      <p className="mb-sm text-caption uppercase tracking-[0.1em] text-ink-secondary">
         {report.report_id}
       </p>
 
       <div className="flex flex-col">
-        <VerdictCard verdict={verdict} />
+        <VerdictCard verdict={verdict} baselines={baselines} />
 
         {!isSuppressed && (
           <EvidenceDisclosure

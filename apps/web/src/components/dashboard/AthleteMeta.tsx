@@ -10,7 +10,7 @@ import type { Athlete } from '@/lib/api/types';
 export function AthleteMeta({ bowling_arm }: Pick<Athlete, 'bowling_arm'>) {
   return (
     <div className="flex items-center gap-1.5 text-small text-ink-secondary">
-      <HandIcon className="size-4 text-ink-dim" />
+      <HandIcon className="size-4 text-ink-secondary" />
       {bowling_arm === 'LEFT' ? 'Left-arm' : bowling_arm === 'RIGHT' ? 'Right-arm' : 'Arm unset'}
     </div>
   );

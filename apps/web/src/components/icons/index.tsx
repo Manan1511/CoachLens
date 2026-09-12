@@ -175,6 +175,28 @@ export function HandIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** The wordmark used everywhere outside the intro itself: "Coach" regular,
+ *  the L drawn as the same acute angle as the intro animation (fully drawn,
+ *  no stroke-in — that draw-on effect is a one-time intro moment, owned by
+ *  IntroOverlay/useIntro), "ens" bold. Sizes in em via the shared
+ *  `.intro-angle` rule, so it tracks whatever font-size/color the caller's
+ *  wrapping element sets. */
+export function Wordmark({ className = '' }: { className?: string }) {
+  return (
+    <span className={`whitespace-nowrap ${className}`}>
+      <span className="font-normal">Coach</span>
+      <span className="intro-angle" aria-hidden>
+        <svg viewBox="0 0 34 64" fill="none" stroke="currentColor" strokeWidth={9} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M7 59 L27 6" />
+          <path d="M7 59 L31 59" />
+        </svg>
+      </span>
+      <span className="font-bold">ens</span>
+      <span className="visually-hidden">CoachLens</span>
+    </span>
+  );
+}
+
 /** The mark: a C closing around a measured angle. */
 export function LogoMark(props: SVGProps<SVGSVGElement>) {
   return (

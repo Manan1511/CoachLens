@@ -61,13 +61,13 @@ export function BaselinePanel({
       >
         <div>
           <p className="text-small font-medium text-ink">{metricLabel}</p>
-          <p className="text-caption text-ink-dim">
+          <p className="text-caption text-ink-secondary">
             {baseline
               ? `Baseline ${formatDeg(baseline.median_deg)} ± ${formatDeg(baseline.iqr_deg)} IQR`
               : 'No baseline confirmed yet'}
           </p>
         </div>
-        <span className="text-caption uppercase tracking-[0.08em] text-ink-dim">
+        <span className="text-caption uppercase tracking-[0.08em] text-ink-secondary">
           {open ? 'Close' : baseline ? 'Update' : 'Confirm'}
         </span>
       </button>
