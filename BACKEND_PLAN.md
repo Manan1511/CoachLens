@@ -19,10 +19,12 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blo
 - [x] Basic health-check endpoint (`GET /health`) — verified via pytest and a live uvicorn boot (200 OK on `/health` and `/docs`)
 
 ## Milestone 1 — Contracts
-- [ ] Pydantic models for delivery ingestion payload (PRD §7.1)
-- [ ] Pydantic models for coaching card report (PRD §7.2)
-- [ ] Canonical status enum defined in one place, imported everywhere (no per-layer string literals)
-- [ ] OpenAPI spec auto-generated and exported for the frontend team
+- [x] Pydantic models for delivery ingestion payload (`src/schemas/delivery.py`, PRD §7.1) — added optional `shoulder` landmark (needed for trunk-tilt, PRD's example payload omits it)
+- [x] Pydantic models for coaching card report (`src/schemas/report.py`, PRD §7.2)
+- [x] Canonical status enum (`src/schemas/status.py`: `DeliveryStatus`, `WindowPattern`) — single source of truth, resolves the `MECHANICAL_WATCH` vs `UNCLASSIFIED_DEVIATION` conflict
+- [x] Contract tests validating both schemas against the PRD's exact example JSON (`tests/test_schemas.py`) — 4/4 passing
+- [x] Stub routes (`POST /api/v1/sessions/delivery`, `GET /api/v1/reports/{delivery_id}`) wired into `main.py` so the OpenAPI spec reflects real shapes (bodies raise `NotImplementedError` until Milestone 5)
+- [x] OpenAPI spec auto-export script (`scripts/export_openapi.py` → `docs/openapi.json`) — share this file with the frontend team, regenerate whenever schemas/routes change
 
 ## Milestone 2 — Database schema (Supabase/Postgres)
 - [ ] `athletes` (id, name, dob, guardian_consent flag — stub true for demo)

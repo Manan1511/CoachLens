@@ -1,0 +1,555 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "CoachLens Coaching API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/sessions/delivery": {
+      "post": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Ingest Delivery",
+        "description": "Placeholder wiring for Milestone 1 (contracts only). The actual\nmeasurement/interpretation/coaching pipeline is built in Milestones 3-5;\nthis exists so the OpenAPI spec reflects the real request/response shapes.",
+        "operationId": "ingest_delivery_api_v1_sessions_delivery_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryIngestionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoachingReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/{delivery_id}": {
+      "get": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Get Report",
+        "operationId": "get_report_api_v1_reports__delivery_id__get",
+        "parameters": [
+          {
+            "name": "delivery_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Delivery Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoachingReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Baselines": {
+        "properties": {
+          "fixed_reference_median_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fixed Reference Median Deg"
+          },
+          "fixed_reference_iqr_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fixed Reference Iqr Deg"
+          },
+          "rolling_6wk_median_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rolling 6Wk Median Deg"
+          },
+          "delta_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Deg"
+          },
+          "uncertainty_band_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uncertainty Band Deg"
+          }
+        },
+        "type": "object",
+        "title": "Baselines"
+      },
+      "CaptureMetadata": {
+        "properties": {
+          "fps": {
+            "type": "integer",
+            "title": "Fps"
+          },
+          "pacing_jitter_pct": {
+            "type": "number",
+            "title": "Pacing Jitter Pct"
+          },
+          "shutter_speed_sec": {
+            "type": "number",
+            "title": "Shutter Speed Sec"
+          },
+          "distance_meters": {
+            "type": "number",
+            "title": "Distance Meters"
+          },
+          "tripod_height_meters": {
+            "type": "number",
+            "title": "Tripod Height Meters"
+          },
+          "camera_roll_deg": {
+            "type": "number",
+            "title": "Camera Roll Deg"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fps",
+          "pacing_jitter_pct",
+          "shutter_speed_sec",
+          "distance_meters",
+          "tripod_height_meters",
+          "camera_roll_deg"
+        ],
+        "title": "CaptureMetadata"
+      },
+      "CoachingReport": {
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "title": "Report Id"
+          },
+          "delivery_id": {
+            "type": "string",
+            "title": "Delivery Id"
+          },
+          "evaluation_timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Evaluation Timestamp"
+          },
+          "kinematics": {
+            "$ref": "#/components/schemas/Kinematics"
+          },
+          "baselines": {
+            "$ref": "#/components/schemas/Baselines"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/Verdict"
+          },
+          "proposed_action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProposedAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "report_id",
+          "delivery_id",
+          "evaluation_timestamp",
+          "kinematics",
+          "baselines",
+          "verdict"
+        ],
+        "title": "CoachingReport"
+      },
+      "DeliveryIngestionRequest": {
+        "properties": {
+          "delivery_id": {
+            "type": "string",
+            "title": "Delivery Id"
+          },
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          },
+          "athlete_id": {
+            "type": "string",
+            "title": "Athlete Id"
+          },
+          "capture_metadata": {
+            "$ref": "#/components/schemas/CaptureMetadata"
+          },
+          "raw_keypoints": {
+            "items": {
+              "$ref": "#/components/schemas/KeypointFrame"
+            },
+            "type": "array",
+            "title": "Raw Keypoints"
+          }
+        },
+        "type": "object",
+        "required": [
+          "delivery_id",
+          "session_id",
+          "athlete_id",
+          "capture_metadata",
+          "raw_keypoints"
+        ],
+        "title": "DeliveryIngestionRequest"
+      },
+      "DeliveryStatus": {
+        "type": "string",
+        "enum": [
+          "DATA_SUPPRESSED",
+          "FORM_BENCHMARK",
+          "MECHANICAL_WATCH",
+          "TECHNICAL_CONCERN"
+        ],
+        "title": "DeliveryStatus",
+        "description": "Canonical verdict status. This is the single source of truth for status\nnames across measurement/interpretation/coaching \u2014 see BACKEND_PLAN.md's\n\"Notes on resolved spec conflicts\" for why MECHANICAL_WATCH was chosen\nover the PRD markdown's UNCLASSIFIED_DEVIATION."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "KeypointFrame": {
+        "properties": {
+          "frame": {
+            "type": "integer",
+            "title": "Frame"
+          },
+          "t_ms": {
+            "type": "number",
+            "title": "T Ms"
+          },
+          "knee": {
+            "$ref": "#/components/schemas/Landmark"
+          },
+          "hip": {
+            "$ref": "#/components/schemas/Landmark"
+          },
+          "ankle": {
+            "$ref": "#/components/schemas/Landmark"
+          },
+          "shoulder": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Landmark"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "frame",
+          "t_ms",
+          "knee",
+          "hip",
+          "ankle"
+        ],
+        "title": "KeypointFrame"
+      },
+      "Kinematics": {
+        "properties": {
+          "ffs_frame": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ffs Frame"
+          },
+          "front_knee_angle_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Front Knee Angle Deg"
+          },
+          "front_knee_confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Front Knee Confidence"
+          },
+          "forward_trunk_tilt_deg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forward Trunk Tilt Deg"
+          },
+          "trunk_tilt_confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trunk Tilt Confidence"
+          }
+        },
+        "type": "object",
+        "title": "Kinematics"
+      },
+      "Landmark": {
+        "properties": {
+          "x": {
+            "type": "number",
+            "title": "X"
+          },
+          "y": {
+            "type": "number",
+            "title": "Y"
+          },
+          "conf": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Conf"
+          }
+        },
+        "type": "object",
+        "required": [
+          "x",
+          "y",
+          "conf"
+        ],
+        "title": "Landmark"
+      },
+      "ProposedAction": {
+        "properties": {
+          "drill_id": {
+            "type": "string",
+            "title": "Drill Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "prescription": {
+            "type": "string",
+            "title": "Prescription"
+          },
+          "contraindications": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Contraindications"
+          },
+          "credential": {
+            "type": "string",
+            "title": "Credential"
+          }
+        },
+        "type": "object",
+        "required": [
+          "drill_id",
+          "title",
+          "prescription",
+          "contraindications",
+          "credential"
+        ],
+        "title": "ProposedAction"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "Verdict": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/DeliveryStatus"
+          },
+          "window_pattern": {
+            "$ref": "#/components/schemas/WindowPattern"
+          },
+          "window_matches": {
+            "type": "integer",
+            "title": "Window Matches",
+            "default": 0
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "clinical_disclaimer": {
+            "type": "string",
+            "title": "Clinical Disclaimer",
+            "default": "Non-diagnostic coaching metric. Reported athlete pain strictly voids prompts."
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "window_pattern",
+          "summary"
+        ],
+        "title": "Verdict"
+      },
+      "WindowPattern": {
+        "type": "string",
+        "enum": [
+          "NOT_APPLICABLE",
+          "ISOLATED",
+          "3_OF_5_MATCHED"
+        ],
+        "title": "WindowPattern"
+      }
+    }
+  }
+}
