@@ -61,3 +61,11 @@ class CoachingReport(BaseModel):
     verdict: Verdict
     proposed_action: ProposedAction | None = None
     """Only populated when verdict.status == TECHNICAL_CONCERN."""
+
+
+class WhatsAppExportResponse(BaseModel):
+    delivery_id: str
+    report_id: str
+    status: DeliveryStatus
+    formatted_text: str
+

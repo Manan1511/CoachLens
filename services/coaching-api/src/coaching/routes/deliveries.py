@@ -4,8 +4,10 @@ from src.coaching import repository
 from src.coaching.auth import require_coach
 from src.coaching.pipeline import ConsentRequiredError, UnknownBaselineError, evaluate_delivery, nudge_and_reevaluate
 from src.measurement.errors import ThermalThrottleError
+from src.coaching.export import format_whatsapp_card
 from src.schemas.delivery import DeliveryIngestionRequest
-from src.schemas.report import CoachingReport
+from src.schemas.report import CoachingReport, WhatsAppExportResponse
+from src.schemas.status import DeliveryStatus
 
 router = APIRouter(prefix="/api/v1", tags=["deliveries"], dependencies=[Depends(require_coach)])
 
@@ -30,6 +32,22 @@ def get_report(delivery_id: str) -> CoachingReport:
     if report is None:
         raise HTTPException(status_code=404, detail=f"No report found for delivery_id={delivery_id!r}")
     return report
+
+
+@router.get("/reports/{delivery_id}/export/whatsapp", response_model=WhatsAppExportResponse)
+def export_whatsapp_card(delivery_id: str) -> WhatsAppExportResponse:
+    """Exports a formatted WhatsApp-ready coaching card per PRD §10.3."""
+    report = repository.get_report(delivery_id)
+    if report is None:
+        raise HTTPException(status_code=404, detail=f"No report found for delivery_id={delivery_id!r}")
+    formatted_text = format_whatsapp_card(report)
+    return WhatsAppExportResponse(
+        delivery_id=report.delivery_id,
+        report_id=report.report_id,
+        status=report.verdict.status,
+        formatted_text=formatted_text,
+    )
+
 
 
 @router.post("/deliveries/{delivery_id}/nudge-ffs", response_model=CoachingReport)

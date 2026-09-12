@@ -47,6 +47,17 @@ def test_athlete_history_requires_auth():
     assert response.status_code == 401
 
 
+def test_export_whatsapp_requires_auth():
+    response = client.get("/api/v1/reports/DEL-1/export/whatsapp")
+    assert response.status_code == 401
+
+
+def test_nudge_ffs_requires_auth():
+    response = client.post("/api/v1/deliveries/DEL-1/nudge-ffs?frame_delta=1")
+    assert response.status_code == 401
+
+
 def test_health_does_not_require_auth():
     response = client.get("/health")
     assert response.status_code == 200
+

@@ -122,6 +122,65 @@
         }
       }
     },
+    "/api/v1/reports/{delivery_id}/export/whatsapp": {
+      "get": {
+        "tags": [
+          "deliveries"
+        ],
+        "summary": "Export Whatsapp Card",
+        "description": "Exports a formatted WhatsApp-ready coaching card per PRD \u00a710.3.",
+        "operationId": "export_whatsapp_card_api_v1_reports__delivery_id__export_whatsapp_get",
+        "parameters": [
+          {
+            "name": "delivery_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Delivery Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppExportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/deliveries/{delivery_id}/nudge-ffs": {
       "post": {
         "tags": [
@@ -402,6 +461,9 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
                   "type": "object",
                   "title": "Response Health Health Get"
                 }
@@ -929,6 +991,33 @@
           "summary"
         ],
         "title": "Verdict"
+      },
+      "WhatsAppExportResponse": {
+        "properties": {
+          "delivery_id": {
+            "type": "string",
+            "title": "Delivery Id"
+          },
+          "report_id": {
+            "type": "string",
+            "title": "Report Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DeliveryStatus"
+          },
+          "formatted_text": {
+            "type": "string",
+            "title": "Formatted Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "delivery_id",
+          "report_id",
+          "status",
+          "formatted_text"
+        ],
+        "title": "WhatsAppExportResponse"
       },
       "WindowPattern": {
         "type": "string",

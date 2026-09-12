@@ -97,9 +97,13 @@ Picked up from the Deferred list below, at the user's direction. Scope: (1) auth
 - [x] `scripts/demo_walkthrough.py` updated to sign in (or sign up, first run) a throwaway demo coach via Supabase Auth and attach the resulting JWT — it would otherwise 401 against the now-protected routes.
 - [ ] **Cloud pose extraction fallback: not started — design proposal needed first.** This item directly contradicts the Milestone 0 architecture decision ("pose extraction happens on-device... the backend never touches raw video and never runs ML inference") — it's not an incremental addition, it's a second ingestion path with a different trust/privacy/infrastructure model (video upload, ephemeral storage + deletion, GPU/CPU inference serving). Flagged to the user rather than silently built.
 
+## Completed Features (Post-Milestone 7)
+- [x] **CORS Configuration & Containerization**: Added configurable `CORSMiddleware` (with `CORS_ORIGINS` setting) and a production-grade `Dockerfile` with `.dockerignore` for containerized cloud deployment.
+- [x] **WhatsApp Coaching Card Export** (`GET /api/v1/reports/{delivery_id}/export/whatsapp`, PRD §10.3 & §4 Layer 3): Pure formatter in `src/coaching/export.py` generates copy-pasteable markdown text with kinematics, baseline reference deltas, accredited drill details, and non-diagnostic clinical disclaimer. Verified across all status variants and tested live against real deliveries.
+
 ## Deferred (post-hackathon, not blocking demo)
-- [ ] Rolling 6-week median (needs real longitudinal data)
-- [ ] WhatsApp export integration (return card text/JSON only for now)
+- [ ] Rolling 6-week median (needs real longitudinal data across multiple weeks)
+
 
 ---
 
