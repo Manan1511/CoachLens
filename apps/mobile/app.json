@@ -3,7 +3,7 @@
     "name": "CoachLens",
     "slug": "coachlens-mobile",
     "version": "1.0.0",
-    "orientation": "landscape",
+    "orientation": "sensorLandscape",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#000000",
