@@ -24,6 +24,10 @@ class AthleteCreateRequest(BaseModel):
     guardian_consent: bool = False
 
 
+class AthleteConsentUpdateRequest(BaseModel):
+    guardian_consent: bool
+
+
 class AthleteSummary(BaseModel):
     """A roster entry, as returned by GET /api/v1/athletes.
 

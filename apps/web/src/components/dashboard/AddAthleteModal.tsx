@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '@/lib/api/client';
 import type { Athlete, BowlingArm } from '@/lib/api/types';
 
@@ -47,13 +48,13 @@ export function AddAthleteModal({
     }
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-1000 flex items-center justify-center bg-black/80 px-4 py-6 backdrop-blur-md animate-modal-backdrop"
+      className="fixed inset-0 z-[2000] flex items-center justify-center overflow-y-auto bg-black/80 p-4 sm:p-6 backdrop-blur-md animate-modal-backdrop"
       onClick={onClose}
     >
       <div
-        className="animate-modal-panel w-full max-w-[28rem] rounded-2xl border border-line bg-surface p-6 shadow-2xl sm:p-7"
+        className="animate-modal-panel relative my-auto w-full max-w-[28rem] rounded-2xl border border-line bg-surface p-6 shadow-2xl sm:p-7 max-h-[calc(100vh-2rem)] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -201,6 +202,7 @@ export function AddAthleteModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

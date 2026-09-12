@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from src.coaching import repository
 from src.coaching.auth import Coach, require_coach
 from src.coaching.schemas.action import BaselineConfirmRequest
-from src.schemas.athlete import AthleteCreateRequest, AthleteSummary
+from src.schemas.athlete import AthleteConsentUpdateRequest, AthleteCreateRequest, AthleteSummary
 from src.schemas.session import SessionResponse
 
 router = APIRouter(prefix="/api/v1/athletes", tags=["athletes"])
@@ -30,6 +30,21 @@ def create_athlete(payload: AthleteCreateRequest, coach: Coach = Depends(require
         dob=payload.dob,
         guardian_consent=payload.guardian_consent,
     )
+
+
+@router.patch("/{athlete_id}/consent", response_model=AthleteSummary)
+def update_athlete_consent(
+    athlete_id: str, payload: AthleteConsentUpdateRequest, coach: Coach = Depends(require_coach)
+) -> AthleteSummary:
+    """Updates guardian consent for an athlete.
+
+    Unblocks youth athletes whose guardian has granted consent via WhatsApp,
+    club registration form, or verified parental confirmation.
+    """
+    try:
+        return repository.update_athlete_consent(athlete_id, payload.guardian_consent)
+    except repository.NotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/{athlete_id}/sessions", response_model=SessionResponse)

@@ -431,6 +431,75 @@
         }
       }
     },
+    "/api/v1/athletes/{athlete_id}/consent": {
+      "patch": {
+        "tags": [
+          "athletes"
+        ],
+        "summary": "Update Athlete Consent",
+        "description": "Updates guardian consent for an athlete.\n\nUnblocks youth athletes whose guardian has granted consent via WhatsApp,\nclub registration form, or verified parental confirmation.",
+        "operationId": "update_athlete_consent_api_v1_athletes__athlete_id__consent_patch",
+        "parameters": [
+          {
+            "name": "athlete_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Athlete Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AthleteConsentUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AthleteSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/athletes/{athlete_id}/sessions": {
       "post": {
         "tags": [
@@ -647,6 +716,19 @@
   },
   "components": {
     "schemas": {
+      "AthleteConsentUpdateRequest": {
+        "properties": {
+          "guardian_consent": {
+            "type": "boolean",
+            "title": "Guardian Consent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "guardian_consent"
+        ],
+        "title": "AthleteConsentUpdateRequest"
+      },
       "AthleteCreateRequest": {
         "properties": {
           "name": {

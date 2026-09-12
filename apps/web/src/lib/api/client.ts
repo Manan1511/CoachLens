@@ -133,6 +133,14 @@ export const api = {
     return toAthlete(dto);
   },
 
+  updateAthleteConsent: async (athleteId: string, guardianConsent: boolean): Promise<Athlete> => {
+    const dto = await apiFetch<AthleteSummaryDto>(`/api/v1/athletes/${encodeURIComponent(athleteId)}/consent`, {
+      method: 'PATCH',
+      body: JSON.stringify({ guardian_consent: guardianConsent }),
+    });
+    return toAthlete(dto);
+  },
+
   /** No single-athlete GET exists (src/coaching/routes/athletes.py has
    *  list/create/sessions/baseline/history, nothing by id) — fetch the
    *  list and find by id. */

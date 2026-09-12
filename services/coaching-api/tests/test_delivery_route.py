@@ -237,3 +237,42 @@ def test_start_or_resume_session_404_for_unknown_athlete(monkeypatch):
     monkeypatch.setattr(athletes.repository, "get_or_create_session", raise_not_found)
     response = client.post("/api/v1/athletes/ATH-MISSING/sessions")
     assert response.status_code == 404
+
+
+def test_update_athlete_consent_success(monkeypatch):
+    from src.schemas.athlete import AthleteSummary
+
+    received = {}
+
+    def fake_update(athlete_id, guardian_consent):
+        received.update(athlete_id=athlete_id, guardian_consent=guardian_consent)
+        return AthleteSummary(
+            id=athlete_id,
+            name="Aarav Patel",
+            bowling_arm="RIGHT",
+            guardian_consent=guardian_consent,
+            consent_blocked=not guardian_consent,
+        )
+
+    monkeypatch.setattr(athletes.repository, "update_athlete_consent", fake_update)
+    response = client.patch(
+        "/api/v1/athletes/ATH-1/consent",
+        json={"guardian_consent": True},
+    )
+    assert response.status_code == 200
+    assert received == {"athlete_id": "ATH-1", "guardian_consent": True}
+    assert response.json()["guardian_consent"] is True
+    assert response.json()["consent_blocked"] is False
+
+
+def test_update_athlete_consent_404_for_unknown_athlete(monkeypatch):
+    def raise_not_found(athlete_id, guardian_consent):
+        raise repository.NotFoundError(f"No athlete found for athlete_id={athlete_id!r}")
+
+    monkeypatch.setattr(athletes.repository, "update_athlete_consent", raise_not_found)
+    response = client.patch(
+        "/api/v1/athletes/ATH-MISSING/consent",
+        json={"guardian_consent": True},
+    )
+    assert response.status_code == 404
+
