@@ -52,7 +52,9 @@ def test_confirm_baseline_upserts_expected_row(mock_db):
 
 
 def test_get_rolling_history_deltas_empty_when_no_sessions(mock_db):
-    _execute_returns(mock_db.table.return_value.select.return_value.eq.return_value, [])
+    _execute_returns(
+        mock_db.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value, []
+    )
     assert repository.get_rolling_history_deltas("ATH-NOBODY", "front_knee_angle_deg") == []
 
 
@@ -60,7 +62,7 @@ def test_get_rolling_history_deltas_chains_sessions_deliveries_verdicts(mock_db)
     def table_side_effect(name):
         m = MagicMock()
         if name == "sessions":
-            _execute_returns(m.select.return_value.eq.return_value, [{"id": "SES-1"}])
+            _execute_returns(m.select.return_value.eq.return_value.order.return_value.limit.return_value, [{"id": "SES-1"}])
         elif name == "deliveries":
             _execute_returns(m.select.return_value.in_.return_value, [{"id": "DEL-1"}, {"id": "DEL-2"}])
         elif name == "verdicts":
@@ -88,7 +90,7 @@ def test_get_rolling_history_deltas_skips_data_suppressed_without_shrinking_wind
     def table_side_effect(name):
         m = MagicMock()
         if name == "sessions":
-            _execute_returns(m.select.return_value.eq.return_value, [{"id": "SES-1"}])
+            _execute_returns(m.select.return_value.eq.return_value.order.return_value.limit.return_value, [{"id": "SES-1"}])
         elif name == "deliveries":
             _execute_returns(
                 m.select.return_value.in_.return_value,
@@ -119,7 +121,7 @@ def test_get_rolling_history_deltas_dedupes_nudged_delivery_keeping_latest(mock_
     def table_side_effect(name):
         m = MagicMock()
         if name == "sessions":
-            _execute_returns(m.select.return_value.eq.return_value, [{"id": "SES-1"}])
+            _execute_returns(m.select.return_value.eq.return_value.order.return_value.limit.return_value, [{"id": "SES-1"}])
         elif name == "deliveries":
             _execute_returns(m.select.return_value.in_.return_value, [{"id": "DEL-1"}, {"id": "DEL-2"}])
         elif name == "verdicts":

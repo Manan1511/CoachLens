@@ -677,6 +677,17 @@
               }
             ],
             "title": "Trunk Tilt Confidence"
+          },
+          "filtered": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filtered"
           }
         },
         "type": "object",

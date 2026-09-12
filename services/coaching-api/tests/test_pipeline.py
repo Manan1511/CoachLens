@@ -82,6 +82,32 @@ def test_evaluate_delivery_raises_on_unknown_baseline(monkeypatch, fake_repo):
         pipeline.evaluate_delivery(make_request())
 
 
+def test_evaluate_delivery_does_not_persist_delivery_on_unknown_baseline(monkeypatch, fake_repo):
+    """Regression test: an UnknownBaselineError must be raised before
+    save_delivery is called, not after - otherwise a delivery row is left
+    orphaned in the DB with no verdict (verdicts.delivery_id has a hard FK
+    to deliveries, so the verdict can never be written after the fact
+    without re-ingesting the whole payload)."""
+    monkeypatch.setattr(repository, "get_baseline", lambda athlete_id, metric: None)
+    with pytest.raises(pipeline.UnknownBaselineError):
+        pipeline.evaluate_delivery(make_request())
+    assert fake_repo["saved_deliveries"] == []
+    assert fake_repo["saved_verdicts"] == []
+
+
+def test_evaluate_delivery_marks_filtered_true_for_normal_delivery(fake_repo):
+    report = pipeline.evaluate_delivery(make_request())
+    assert report.kinematics.filtered is True
+
+
+def test_evaluate_delivery_marks_filtered_false_for_too_few_frames(fake_repo):
+    dt = 1000.0 / FPS
+    short_request = make_request()
+    short_request = short_request.model_copy(update={"raw_keypoints": short_request.raw_keypoints[:5]})
+    report = pipeline.evaluate_delivery(short_request)
+    assert report.kinematics.filtered is False
+
+
 def test_evaluate_delivery_data_suppressed_skips_baseline_lookup(monkeypatch, fake_repo):
     baseline_calls = []
     monkeypatch.setattr(repository, "get_baseline", lambda *a: baseline_calls.append(a) or None)
@@ -97,7 +123,7 @@ def test_nudge_and_reevaluate_shifts_ffs_frame(monkeypatch, fake_repo):
     monkeypatch.setattr(
         repository, "get_delivery_frames", lambda delivery_id: (request.raw_keypoints, request.capture_metadata)
     )
-    original_ffs = pipeline.detect_ffs_frame(pipeline._filtered_or_raw(request.raw_keypoints, FPS))
+    original_ffs = pipeline.detect_ffs_frame(pipeline._filtered_or_raw(request.raw_keypoints, FPS)[0])
     monkeypatch.setattr(
         repository, "get_latest_verdict_for_delivery", lambda delivery_id: {"id": "verdict-uuid-1", "event_frame": original_ffs}
     )
@@ -117,7 +143,7 @@ def test_nudge_and_reevaluate_is_cumulative_across_repeated_nudges(monkeypatch, 
         repository, "get_delivery_frames", lambda delivery_id: (request.raw_keypoints, request.capture_metadata)
     )
     monkeypatch.setattr(repository, "get_athlete_id_for_delivery", lambda delivery_id: "ATH-1")
-    original_ffs = pipeline.detect_ffs_frame(pipeline._filtered_or_raw(request.raw_keypoints, FPS))
+    original_ffs = pipeline.detect_ffs_frame(pipeline._filtered_or_raw(request.raw_keypoints, FPS)[0])
 
     # First nudge: latest verdict reflects the auto-detected frame.
     monkeypatch.setattr(

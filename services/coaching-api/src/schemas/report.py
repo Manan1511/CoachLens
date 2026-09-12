@@ -11,6 +11,13 @@ class Kinematics(BaseModel):
     front_knee_confidence: float | None = None
     forward_trunk_tilt_deg: float | None = None
     trunk_tilt_confidence: float | None = None
+    filtered: bool | None = None
+    """False if the delivery had too few frames for the zero-phase
+    Butterworth filter and this angle was computed from raw, unsmoothed
+    keypoints instead (see pipeline._filtered_or_raw). None for reports
+    reconstructed via GET before this field existed - not recomputed
+    retroactively, since that could silently diverge from what was actually
+    used to produce the persisted verdict."""
 
 
 class Baselines(BaseModel):

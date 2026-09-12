@@ -13,6 +13,15 @@ from src.schemas.report import Baselines, CoachingReport, Kinematics, ProposedAc
 from src.schemas.status import DeliveryStatus, WindowPattern
 
 ROLLING_HISTORY_LIMIT = 4
+RECENT_SESSIONS_SCAN_LIMIT = 20
+"""Bounds get_rolling_history_deltas to an athlete's most recent N sessions
+instead of scanning their entire history every time. 20 sessions is a wide
+margin for finding 4 valid deliveries (PRD's rolling window only ever needs
+the last 4) - this is a pragmatic bound, not a guarantee; an athlete with
+fewer than 4 valid deliveries across their most recent 20 sessions would see
+a shorter window than intended. A schema change adding athlete_id directly
+to deliveries/verdicts would remove the need for this bound entirely, but
+that's a bigger change than fixing the immediate unbounded-scan cost."""
 
 
 @dataclass
@@ -76,10 +85,21 @@ def get_rolling_history_deltas(athlete_id: str, metric: str, limit: int = ROLLIN
     only the most recent) and filtered to valid ones (delta_deg is not
     None) in Python first, and *that* result is what gets truncated to
     `limit`.
+
+    The initial sessions lookup is capped at RECENT_SESSIONS_SCAN_LIMIT so
+    this doesn't scan an athlete's entire multi-season history on every
+    single ingest call just to find the last 4 valid deliveries.
     """
     db = get_supabase()
 
-    session_rows = db.table("sessions").select("id").eq("athlete_id", athlete_id).execute()
+    session_rows = (
+        db.table("sessions")
+        .select("id")
+        .eq("athlete_id", athlete_id)
+        .order("session_date", desc=True)
+        .limit(RECENT_SESSIONS_SCAN_LIMIT)
+        .execute()
+    )
     session_ids = [row["id"] for row in session_rows.data]
     if not session_ids:
         return []
@@ -156,6 +176,7 @@ def save_verdict(
     observed_value_deg: float | None = None,
     confidence: float | None = None,
     trigger_deltas: list[float] | None = None,
+    filtered: bool | None = None,
 ) -> str:
     """Verdicts are immutable historical records (PRD Layer 3 audit trail),
     so the observed kinematics that produced this verdict (event_frame,
@@ -182,6 +203,7 @@ def save_verdict(
                 "observed_value_deg": observed_value_deg,
                 "confidence": confidence,
                 "trigger_deltas": trigger_deltas,
+                "filtered": filtered,
             }
         )
         .execute()
@@ -263,6 +285,7 @@ def get_report(delivery_id: str) -> CoachingReport | None:
         ffs_frame=verdict_row["event_frame"],
         front_knee_angle_deg=verdict_row["observed_value_deg"],
         front_knee_confidence=verdict_row["confidence"],
+        filtered=verdict_row.get("filtered"),
     )
 
     baselines = Baselines()
