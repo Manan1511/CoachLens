@@ -127,13 +127,16 @@ function CaptureScreen({
 
   return (
     <div className="relative -mx-md -mt-24 h-screen overflow-hidden bg-canvas sm:-mt-28">
-      <video
-        ref={videoRef}
-        playsInline
-        muted
-        className="h-full w-full object-cover"
-        style={{ transform: 'scaleX(-1)' }}
-      />
+      {/* No mirroring here - that's a front/selfie-camera convention (so the
+          preview matches what looking in a real mirror feels like). This is
+          the rear ("environment") camera filming a bowler from the side;
+          mirroring it would show the delivery reversed left-right, which is
+          actively misleading for a coach checking framing. Confirmed as a
+          real bug on-device during the Milestone 0.5 spike (2026-09-13) -
+          doesn't affect the actual keypoint data sent to the backend, since
+          CSS transforms never touch what detectForVideo reads from the
+          <video> element, only the on-screen preview. */}
+      <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
 
       {/* Quick-select strip: pool members only, one tap, no search - see
           CAPTURE_PLAN.md §6. Selected name rendered large enough that a
