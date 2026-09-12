@@ -49,31 +49,41 @@ export function FatigueChart({ points }: { points: FatiguePoint[] }) {
   };
 
   return (
-    <div className="flex items-center gap-sm">
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="h-12 w-full max-w-[16rem]" role="img" aria-label="Trunk tilt within this spell">
-        <polyline
-          points={coords.map((c) => `${c.x},${c.y}`).join(' ')}
-          fill="none"
-          stroke="var(--color-ink-dim)"
-          strokeWidth={1.5}
-        />
-        {points.map((p, i) =>
-          p.trunkTilt === null ? null : (
-            <circle
-              key={i}
-              cx={x(i)}
-              cy={y(p.trunkTilt)}
-              r={3}
-              fill={p.status ? STATUS_COLOR[p.status] : 'var(--color-ink-dim)'}
-            >
-              <title>Ball {i + 1}: {formatDeg(p.trunkTilt)}</title>
-            </circle>
-          ),
-        )}
-      </svg>
-      <span className="shrink-0 text-caption text-ink-dim">
-        {formatDeg(values[0])} → {formatDeg(values[values.length - 1])}
-      </span>
+    <div className="mb-1.5">
+      <p className="mb-1 text-caption text-ink-dim">Trunk tilt within this spell, ball by ball</p>
+      <div className="flex items-center gap-sm">
+        <svg
+          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          className="h-12 w-full max-w-[16rem]"
+          role="img"
+          aria-label="Trunk tilt within this spell"
+        >
+          <polyline
+            points={coords.map((c) => `${c.x},${c.y}`).join(' ')}
+            fill="none"
+            stroke="var(--color-ink-dim)"
+            strokeWidth={1.5}
+          />
+          {points.map((p, i) =>
+            p.trunkTilt === null ? null : (
+              <circle
+                key={i}
+                cx={x(i)}
+                cy={y(p.trunkTilt)}
+                r={3}
+                fill={p.status ? STATUS_COLOR[p.status] : 'var(--color-ink-dim)'}
+              >
+                <title>
+                  Ball {i + 1}: {formatDeg(p.trunkTilt)}
+                </title>
+              </circle>
+            ),
+          )}
+        </svg>
+        <span className="shrink-0 text-caption text-ink-dim">
+          {formatDeg(values[0])} → {formatDeg(values[values.length - 1])}
+        </span>
+      </div>
     </div>
   );
 }

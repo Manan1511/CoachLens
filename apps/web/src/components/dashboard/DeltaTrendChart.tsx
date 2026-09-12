@@ -1,3 +1,4 @@
+import { StatusLegend } from './StatusLegend';
 import type { DeliveryStatus } from '@/lib/api/types';
 import { formatDeg } from '@/lib/stats';
 
@@ -66,49 +67,60 @@ export function DeltaTrendChart({
   });
   if (current.length) segments.push(current);
 
+  const statusesPresent = Array.from(
+    new Set(points.map((p) => p.status).filter((s): s is DeliveryStatus => s !== null)),
+  );
+
   return (
-    <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="w-full" role="img" aria-label="Baseline delta trend">
-      <rect
-        x={PAD_X}
-        y={bandTop}
-        width={innerW}
-        height={bandBottom - bandTop}
-        fill="rgba(255,255,255,0.05)"
-      />
-      <line
-        x1={PAD_X}
-        y1={zeroY}
-        x2={WIDTH - PAD_X}
-        y2={zeroY}
-        stroke="var(--color-line)"
-        strokeWidth={1}
-      />
-
-      {segments.map((seg, i) => (
-        <polyline
-          key={i}
-          points={seg.map((p) => `${p.x},${p.y}`).join(' ')}
-          fill="none"
-          stroke="var(--color-ink-dim)"
-          strokeWidth={1.5}
+    <div>
+      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="w-full" role="img" aria-label="Baseline delta trend">
+        <rect
+          x={PAD_X}
+          y={bandTop}
+          width={innerW}
+          height={bandBottom - bandTop}
+          fill="rgba(255,255,255,0.05)"
         />
-      ))}
+        <line
+          x1={PAD_X}
+          y1={zeroY}
+          x2={WIDTH - PAD_X}
+          y2={zeroY}
+          stroke="var(--color-line)"
+          strokeWidth={1}
+        />
 
-      {points.map((p, i) =>
-        p.delta === null ? null : (
-          <circle
+        {segments.map((seg, i) => (
+          <polyline
             key={i}
-            cx={x(i)}
-            cy={y(p.delta)}
-            r={4}
-            fill={p.status ? STATUS_COLOR[p.status] : 'var(--color-ink-dim)'}
-          >
-            <title>
-              {p.date}: {formatDeg(p.delta)}
-            </title>
-          </circle>
-        ),
-      )}
-    </svg>
+            points={seg.map((p) => `${p.x},${p.y}`).join(' ')}
+            fill="none"
+            stroke="var(--color-ink-dim)"
+            strokeWidth={1.5}
+          />
+        ))}
+
+        {points.map((p, i) =>
+          p.delta === null ? null : (
+            <circle
+              key={i}
+              cx={x(i)}
+              cy={y(p.delta)}
+              r={4}
+              fill={p.status ? STATUS_COLOR[p.status] : 'var(--color-ink-dim)'}
+            >
+              <title>
+                {p.date}: {formatDeg(p.delta)}
+              </title>
+            </circle>
+          ),
+        )}
+      </svg>
+
+      <p className="mt-1.5 mb-1 text-caption text-ink-dim">
+        Shaded band = within personal baseline
+      </p>
+      {statusesPresent.length > 0 && <StatusLegend statuses={statusesPresent} />}
+    </div>
   );
 }

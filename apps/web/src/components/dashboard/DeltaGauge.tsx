@@ -20,6 +20,13 @@ export function DeltaGauge({ delta, band }: { delta: number; band: number }) {
           className="absolute inset-y-0 rounded-full bg-white/12"
           style={{ left: `${bandStart}%`, width: `${bandEnd - bandStart}%` }}
         />
+        {/* Zero tick — without it the shaded band reads as "the safe zone"
+            but gives no sense of which direction is which, or where the
+            athlete's own baseline actually sits. */}
+        <div
+          className="absolute inset-y-0 w-px bg-line-strong"
+          style={{ left: '50%' }}
+        />
         <div
           className={`absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ${
             withinBand ? 'bg-status-green' : 'bg-status-red'

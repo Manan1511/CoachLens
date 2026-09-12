@@ -63,7 +63,7 @@ export function AthleteDetailPage() {
   const quality = computeDataQuality(sessions);
 
   return (
-    <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-[14rem_1fr_18rem] lg:items-start lg:gap-8">
+    <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-[14rem_1fr_22rem] lg:items-start lg:gap-10">
       {/* Left — identity, pinned */}
       <div className="mb-lg lg:sticky lg:top-28 lg:mb-0">
         <Link to="/app" className="mb-md inline-block text-small text-ink-dim hover:text-ink">
@@ -79,7 +79,7 @@ export function AthleteDetailPage() {
         <AthleteMeta gender={athlete.gender} bowling_arm={athlete.bowling_arm} />
 
         {quality.totalDeliveries > 0 && (
-          <p className="mt-md text-caption text-ink-dim">
+          <p className="mt-md border-t border-line pt-md text-caption text-ink-dim">
             {quality.suppressedPct !== null && (
               <>{Math.round(quality.suppressedPct)}% suppressed for low confidence</>
             )}
@@ -93,7 +93,7 @@ export function AthleteDetailPage() {
       {/* Middle — baseline, sessions, and flag history: this is what scrolls */}
       <div className="min-w-0">
         <section className="mb-lg">
-          <h2 className="mb-1 text-caption font-bold uppercase tracking-[0.1em] text-ink-dim">
+          <h2 className="mb-1 text-caption font-bold uppercase tracking-[0.1em] text-ink-secondary">
             Baseline
           </h2>
           <div className="flex flex-col">
@@ -111,14 +111,14 @@ export function AthleteDetailPage() {
         </section>
 
         <section className="mb-lg">
-          <h2 className="mb-sm text-caption font-bold uppercase tracking-[0.1em] text-ink-dim">
+          <h2 className="mb-sm text-caption font-bold uppercase tracking-[0.1em] text-ink-secondary">
             Sessions
           </h2>
           <SessionTimeline sessions={sessions} />
         </section>
 
         <section>
-          <h2 className="mb-1 text-caption font-bold uppercase tracking-[0.1em] text-ink-dim">
+          <h2 className="mb-1 text-caption font-bold uppercase tracking-[0.1em] text-ink-secondary">
             Flags & actions
           </h2>
           <FlagHistory sessions={sessions} />
@@ -128,8 +128,11 @@ export function AthleteDetailPage() {
       {/* Right — trend chart, pinned */}
       {kneeBaseline && (
         <div className="mt-lg lg:sticky lg:top-28 lg:mt-0">
-          <h2 className="mb-sm text-caption font-bold uppercase tracking-[0.1em] text-ink-dim">
-            Trend — {METRIC_LABELS.front_knee_angle_deg}
+          <p className="mb-0.5 text-caption font-bold uppercase tracking-[0.1em] text-ink-secondary">
+            Trend
+          </p>
+          <h2 className="mb-sm text-small text-ink-secondary">
+            {METRIC_LABELS.front_knee_angle_deg}
           </h2>
           <DeltaTrendChart
             points={toTrendPoints(sessions)}
