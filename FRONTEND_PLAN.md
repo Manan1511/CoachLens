@@ -2,7 +2,9 @@
 
 Status legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked/skipped (explain in Dead End Registry if abandoned)
 
-**Scope:** the public **marketing site** only. This is the shop window — it explains the product to grassroots coaches and collects interest. It is *not* the product. The coach-facing **dashboard is a separate web app** and should not be built in this codebase (see "Boundary with the dashboard").
+**Scope:** originally the public **marketing site** only. That boundary changed: the coach-facing dashboard now lives in the same `apps/web/` build, routed at `/app/*`, rather than as a separate app — see Milestone 7. This file still tracks the marketing site's own build status below; the dashboard has its own scope described where it's built.
+
+> **Note:** this document (stack, file map, milestones) describes the original **vanilla HTML/CSS/JS** build. The site has since been ported to **React + TypeScript + Tailwind** at `apps/web/`, and the section flow itself has been redesigned (the hero is now a centred wordmark with no headline; the three-pillar "architecture" section is now a scroll-revealed advantages list; "how it works" is now a semicircular step arc). The stack/file-map/milestone sections below are kept as a historical record of the original build rather than rewritten in place — **`DESIGN.md` is the current, accurate design reference.**
 
 **Product framing:** CoachLens is a **web app**, not a mobile app. Coaches film with the camera app already on their phone, then upload the clips in a browser. Nothing to install. Any copy implying an in-app stencil, an on-device capture app, or an App Store download is wrong.
 
@@ -93,33 +95,15 @@ Section `id`s double as nav anchors and as hooks for `animations.js`, so **renam
 - [ ] Deployment target + CI build (nothing configured yet)
 - [ ] Compress/resize the JPEGs and serve modern formats
 
-## Milestone 7 — Boundary with the dashboard
-- [ ] Extract `src/styles/index.css` tokens into a shared package both apps consume
-- [ ] Dashboard starts as its **own app** — do not grow it out of this page
+## Milestone 7 — Boundary with the dashboard (superseded)
+- [x] ~~Extract tokens into a shared package both apps consume~~ — moot: one app now, tokens already shared by being the same `theme.css`
+- [!] ~~Dashboard starts as its own app~~ — **reversed by decision:** the dashboard lives at `/app/*` inside `apps/web/`, not as a separate app. See `DESIGN.md` and `apps/web/src/routes/dashboard/`.
 
 ---
 
 ## Design system
 
-The tokens in `src/styles/index.css` are the source of truth; nothing should hardcode a colour. The palette is deliberately monochrome:
-
-```css
---color-bg-primary: #000000;       /* the canvas, everywhere */
---color-bg-card: #0C0C0C;          /* content cards, hairline-bordered */
---color-accent: #FFFFFF;           /* "accent" is white by design */
---color-text-primary: #FFFFFF;
---color-text-secondary: rgba(255,255,255,0.66);
---color-text-dim: rgba(255,255,255,0.44);
---color-border: rgba(255,255,255,0.14);
-```
-
-Status colours (`--color-status-green` / `-yellow` / `-red`) are the **only** hues on the site. They are semantic — they mirror the engine's verdict states — and exist solely inside the status panel and badges. Do not borrow them for decoration.
-
-**Type.** Inter throughout. The rule that makes the page feel like the reference: large text is *light*, small text is *bold*. Section headings run 400 at up to ~3.4rem with negative tracking; eyebrow labels are 700 at 0.75rem, uppercase, wide-tracked. Inverting that will make the page look like a generic SaaS landing page immediately.
-
-**Motion.** Everything is scroll-driven via GSAP ScrollTrigger, with Lenis smoothing the scroll itself. The architecture section pins for 300vh and cross-fades three pillars — it is the most fragile piece on the page, and it depends on `#arch-pin-spacer`, `#arch-sticky` and `#arch-layer-1..3` existing. The vision paragraph is rebuilt at runtime into per-word spans that light up on scroll; the accent-word list lives in `animations.js` and **must be updated whenever that paragraph's copy changes**.
-
-**Imagery.** The current three JPEGs carry a cyan/neon skeletal overlay from the earlier dark-neon direction. They read acceptably on black but they are the one element still fighting the monochrome palette. When there's real footage, reshoot or re-grade them neutral.
+Moved to **`DESIGN.md`** at the repo root, which now covers both the marketing site and the dashboard: the tokens (`apps/web/src/styles/theme.css`), the specific patterns taken from ethnocare, the motion language, and a section-by-section pattern table. This file no longer duplicates it, since the duplication is exactly how the snippet above drifted out of date (it still names `src/styles/index.css`, `--color-bg-primary`, and a 300vh-pinned three-pillar section, none of which exist anymore).
 
 ---
 

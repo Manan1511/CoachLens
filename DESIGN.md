@@ -2,6 +2,8 @@
 
 Reference: [ethnocare.ca](https://ethnocare.ca/). This document records the design language borrowed from it, the specific choices made from it, and the tokens/patterns that implement them in `apps/web/`. It is the frontend's design reference — `FRONTEND_PLAN.md` tracks build status, this tracks *why the site looks the way it does*.
 
+Covers both surfaces in `apps/web/`: the marketing site (`/`) and the coach dashboard (`/app/*`). §1–5 are marketing-site-specific — the dashboard shares the tokens (§2) but not the scroll choreography. See §7.
+
 ## 1. What we took from ethnocare, specifically
 
 Not "a dark theme" — these five concrete patterns, observed directly on the live site (see the Dead End Registry in `FRONTEND_PLAN.md` for what happens when you design from a text summary instead of the real thing):
@@ -54,6 +56,10 @@ One family: Inter. The scale is entirely `clamp()`-based so nothing needs a manu
 
 Two, and only two: `--breakpoint-tablet` (900px, nav collapses to the hamburger menu, hero-style layouts stack) and `--breakpoint-mobile` (640px, grids go single-column). Used as Tailwind's `max-tablet:` / `max-mobile:` variants. Resist adding a third — the two-breakpoint discipline is what keeps the responsive CSS legible.
 
+### A token-naming gotcha
+
+The spacing scale's key names (`xs`, `sm`, `md`, `lg`, `xl`, `2xl`) are the same names Tailwind's built-in `max-w-*`/`w-*` container scale uses. Because `--spacing-sm` etc. are defined in this `@theme` block, they win over Tailwind's own `--container-sm` when a `max-w-sm` (or `w-sm`, `min-w-sm`, …) utility is used — it silently resolves to the *spacing* value (1rem) instead of the intended container width (24rem). This bit the dashboard's login card and page-width wrappers. **Don't use `max-w-{xs,sm,md,lg,xl,2xl}` anywhere in this codebase** — use an explicit value instead (`max-w-[24rem]`, `max-w-[42rem]`) or the existing `max-w-(--container-max)` pattern already used in `Nav.tsx`. `max-w-3xl`/`max-w-4xl`/`max-w-7xl` etc. are unaffected, since no spacing token shares those names.
+
 ## 3. Motion language
 
 Two libraries, one rule for how they interact: **Lenis drives the actual scroll, GSAP ScrollTrigger reads it** — they're wired together (`lenis.on('scroll', ScrollTrigger.update)`), not running independently, so anything pinned or scrubbed stays in lockstep with what the visitor feels under their finger.
@@ -98,3 +104,21 @@ The three source JPEGs still carry a cyan skeletal-overlay grade from an earlier
 - Don't give a card a fill colour for "emphasis." Borders and glow rings are the only lift the palette has.
 - Don't add a third breakpoint. Restructure the two-breakpoint layout instead.
 - Don't let a scroll animation start before `useAnimationsReady()` — even a "small" one will visibly play out of sync with the intro overlay's release.
+
+## 7. The dashboard: what carries over, what doesn't
+
+Same app, same build, one entry point — the marketing nav links to `/app`, and `/app/*` is the coach dashboard. But it is deliberately **not** a continuation of the marketing page's visual identity. A coach reviewing flagged deliveries needs a calm, scannable utility screen; the marketing page's whole job is the opposite — to hold attention through a scripted narrative. Building the dashboard as "the marketing page with tables bolted on" would fight both audiences at once.
+
+**Carries over (§2 tokens, unchanged):**
+- The canvas/surface/ink/line colour scale, exactly as defined — still pure black, still hairline-bordered elevation.
+- The type scale and the weight-inversion rule (§1.2) — labels bold and small, content regular weight.
+- `--color-status-green/yellow/red` — and here they finally get to do real work. This is the one part of the token set the marketing site could only gesture at (a status-panel mockup); the dashboard is where these colours are load-bearing, tied directly to real verdict states. Still: semantic only, never decorative, never a fourth hue added for anything else.
+- Radii, spacing scale, `focus-visible` treatment.
+
+**Does not carry over:**
+- No Lenis smooth-scroll, no GSAP ScrollTrigger, no intro overlay, no `useAnimationsReady()` gating. The dashboard is a standard nav-and-content app — native scroll, instant interaction. Scroll hijacking has no place in a screen someone uses many times a day to make real decisions.
+- No centred giant wordmarks, no pinned sections, no scroll-scrubbed reveals. Content appears because a coach navigated to it, not because they scrolled far enough.
+- No narrative section order. The dashboard's structure is navigational (roster → athlete → delivery), not a scripted top-to-bottom story.
+- `--color-accent-blue` (§2, §4) stays scoped to the marketing site's vision-statement highlight. It does not mean anything on the dashboard — don't reach for it there.
+
+**New pattern the dashboard introduces:** progressive disclosure as an information-architecture rule, not a scroll effect. Where the marketing site reveals content by scrolling into it, the dashboard reveals it by drill-down and disclosure: a roster card shows almost nothing, an athlete page shows less than it could, a delivery report opens on just the verdict and tucks evidence behind a named disclosure. Motion here is limited to ordinary UI transitions (an accordion opening, a hover state) — never a scroll-driven timeline.
