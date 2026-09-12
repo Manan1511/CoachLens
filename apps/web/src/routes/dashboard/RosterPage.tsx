@@ -35,12 +35,12 @@ async function loadRoster(): Promise<RosterRow[]> {
   );
 
   const rows = athletes.map((athlete, i) => {
-    const history: SessionSummary[] = histories[i];
-    const lastSession = history[0];
-    const lastDelivery = lastSession?.deliveries[lastSession.deliveries.length - 1];
+    const history: SessionSummary[] = histories[i] ?? [];
+    const sessionWithDeliveries = history.find((s) => s.deliveries.length > 0) ?? history[0];
+    const lastDelivery = sessionWithDeliveries?.deliveries[sessionWithDeliveries.deliveries.length - 1];
     return {
       athlete,
-      lastSessionDate: lastSession?.session_date ?? null,
+      lastSessionDate: sessionWithDeliveries?.session_date ?? null,
       latestStatus: lastDelivery?.latest_status ?? null,
       statusCounts: countByStatus(history.flatMap((s) => s.deliveries)),
     };
