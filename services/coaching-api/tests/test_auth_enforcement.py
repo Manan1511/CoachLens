@@ -57,6 +57,21 @@ def test_nudge_ffs_requires_auth():
     assert response.status_code == 401
 
 
+def test_list_athletes_requires_auth():
+    response = client.get("/api/v1/athletes")
+    assert response.status_code == 401
+
+
+def test_create_athlete_requires_auth():
+    response = client.post("/api/v1/athletes", json={"name": "X", "bowling_arm": "RIGHT"})
+    assert response.status_code == 401
+
+
+def test_start_session_requires_auth():
+    response = client.post("/api/v1/athletes/ATH-1/sessions")
+    assert response.status_code == 401
+
+
 def test_health_does_not_require_auth():
     response = client.get("/health")
     assert response.status_code == 200

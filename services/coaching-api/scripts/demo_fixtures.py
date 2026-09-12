@@ -75,7 +75,6 @@ def build_delivery_payload(demo: DemoDelivery) -> dict:
     return {
         "delivery_id": demo.delivery_id,
         "session_id": SESSION_ID,
-        "athlete_id": ATHLETE_ID,
         "capture_metadata": {
             "fps": FPS,
             "pacing_jitter_pct": 2.1,

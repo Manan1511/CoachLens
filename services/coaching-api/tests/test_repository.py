@@ -263,3 +263,158 @@ def test_get_report_reconstructs_full_report(mock_db):
 def test_get_report_returns_none_when_no_verdict(mock_db):
     _execute_returns(mock_db.table.return_value.select.return_value.eq.return_value.order.return_value.limit.return_value, [])
     assert repository.get_report("DEL-MISSING") is None
+
+
+def test_list_athletes_maps_rows_and_flags_consent(mock_db):
+    """A minor without guardian consent must come back consent_blocked=True
+    so a pool selector can grey them out, rather than the app discovering it
+    as a 403 at the moment of recording."""
+    from datetime import date, timedelta
+
+    minor_dob = (date.today() - timedelta(days=15 * 365 + 10)).isoformat()
+    adult_dob = (date.today() - timedelta(days=25 * 365 + 10)).isoformat()
+    _execute_returns(
+        mock_db.table.return_value.select.return_value.order.return_value,
+        [
+            {"id": "ATH-1", "name": "Adult", "dob": adult_dob, "guardian_consent": False, "bowling_arm": "RIGHT"},
+            {"id": "ATH-2", "name": "Minor", "dob": minor_dob, "guardian_consent": False, "bowling_arm": "LEFT"},
+            {"id": "ATH-3", "name": "Consented Minor", "dob": minor_dob, "guardian_consent": True, "bowling_arm": "RIGHT"},
+            {"id": "ATH-4", "name": "Legacy", "dob": None, "guardian_consent": False, "bowling_arm": None},
+        ],
+    )
+
+    roster = repository.list_athletes()
+
+    assert [a.consent_blocked for a in roster] == [False, True, False, False]
+    assert roster[3].bowling_arm is None  # legacy row, no arm recorded
+    assert roster[1].bowling_arm == "LEFT"
+
+
+def test_create_athlete_inserts_generated_id_and_returns_summary(mock_db):
+    from datetime import date
+
+    def insert_side_effect(row):
+        m = MagicMock()
+        _execute_returns(m, [row])
+        return m
+
+    mock_db.table.return_value.insert.side_effect = insert_side_effect
+
+    created = repository.create_athlete(
+        name="New Bowler", bowling_arm="LEFT", dob=date(2000, 5, 1), guardian_consent=False
+    )
+
+    inserted = mock_db.table.return_value.insert.call_args[0][0]
+    assert inserted["name"] == "New Bowler"
+    assert inserted["bowling_arm"] == "LEFT"
+    assert inserted["dob"] == "2000-05-01"
+    assert inserted["id"]  # server-generated
+    assert created.id == inserted["id"]
+    assert created.consent_blocked is False
+
+
+def test_get_athlete_id_for_session_returns_athlete(mock_db):
+    _execute_returns(mock_db.table.return_value.select.return_value.eq.return_value.limit.return_value, [{"athlete_id": "ATH-1"}])
+    assert repository.get_athlete_id_for_session("SES-1") == "ATH-1"
+
+
+def test_get_athlete_id_for_session_raises_not_found(mock_db):
+    _execute_returns(mock_db.table.return_value.select.return_value.eq.return_value.limit.return_value, [])
+    with pytest.raises(repository.NotFoundError):
+        repository.get_athlete_id_for_session("SES-MISSING")
+
+
+def test_get_or_create_session_raises_not_found_for_unknown_athlete(mock_db):
+    _execute_returns(mock_db.table.return_value.select.return_value.eq.return_value.limit.return_value, [])
+    with pytest.raises(repository.NotFoundError):
+        repository.get_or_create_session("ATH-MISSING")
+
+
+def test_get_or_create_session_reuses_existing_session_for_same_day(mock_db):
+    """Regression test: a coach quick-switching back to a bowler already
+    recorded today must get the same session_id back, not a duplicate."""
+    from datetime import date
+
+    sessions_mock = MagicMock()
+    _execute_returns(
+        sessions_mock.select.return_value.eq.return_value.eq.return_value.limit.return_value,
+        [{"id": "SES-EXISTING"}],
+    )
+
+    def table_side_effect(name):
+        if name == "athletes":
+            m = MagicMock()
+            _execute_returns(m.select.return_value.eq.return_value.limit.return_value, [{"id": "ATH-1"}])
+            return m
+        elif name == "sessions":
+            return sessions_mock
+        raise AssertionError(f"unexpected table {name!r}")
+
+    mock_db.table.side_effect = table_side_effect
+    session_id, session_date, created = repository.get_or_create_session("ATH-1", session_date=date(2026, 9, 12))
+    assert session_id == "SES-EXISTING"
+    assert session_date == date(2026, 9, 12)
+    assert created is False
+    sessions_mock.insert.assert_not_called()
+
+
+def test_get_or_create_session_defaults_to_todays_date_in_ist_not_utc(mock_db, monkeypatch):
+    """Regression test: the server runs in UTC (Render). A coach training
+    late in an IST evening - 2026-09-12 23:30 IST is still 2026-09-12 in
+    UTC, but a session starting at, say, 2026-09-13 04:00 IST is
+    2026-09-12 22:30 UTC - must not get dated to the wrong calendar day.
+    Freezes a real-world instant chosen so the UTC date and the IST date
+    actually disagree, then asserts the IST one wins."""
+    from datetime import date, datetime, timezone
+
+    fixed_instant_utc = datetime(2026, 9, 12, 23, 30, tzinfo=timezone.utc)  # -> 2026-09-13 05:00 IST
+
+    class _FixedNow:
+        @staticmethod
+        def now(tz):
+            return fixed_instant_utc.astimezone(tz)
+
+    monkeypatch.setattr(repository, "datetime", _FixedNow)
+
+    sessions_mock = MagicMock()
+    _execute_returns(sessions_mock.select.return_value.eq.return_value.eq.return_value.limit.return_value, [])
+
+    def table_side_effect(name):
+        if name == "athletes":
+            m = MagicMock()
+            _execute_returns(m.select.return_value.eq.return_value.limit.return_value, [{"id": "ATH-1"}])
+            return m
+        elif name == "sessions":
+            return sessions_mock
+        raise AssertionError(f"unexpected table {name!r}")
+
+    mock_db.table.side_effect = table_side_effect
+    _, session_date, _ = repository.get_or_create_session("ATH-1")
+
+    assert session_date == date(2026, 9, 13)  # IST date, not the UTC date (9/12)
+    assert sessions_mock.select.return_value.eq.return_value.eq.call_args[0] == ("session_date", "2026-09-13")
+
+
+def test_get_or_create_session_creates_new_session_when_none_exists_today(mock_db):
+    from datetime import date
+
+    sessions_mock = MagicMock()
+    _execute_returns(sessions_mock.select.return_value.eq.return_value.eq.return_value.limit.return_value, [])
+
+    def table_side_effect(name):
+        if name == "athletes":
+            m = MagicMock()
+            _execute_returns(m.select.return_value.eq.return_value.limit.return_value, [{"id": "ATH-1"}])
+            return m
+        elif name == "sessions":
+            return sessions_mock
+        raise AssertionError(f"unexpected table {name!r}")
+
+    mock_db.table.side_effect = table_side_effect
+    session_id, session_date, created = repository.get_or_create_session("ATH-1", session_date=date(2026, 9, 12))
+    assert created is True
+    assert session_date == date(2026, 9, 12)
+    inserted = sessions_mock.insert.call_args[0][0]
+    assert inserted["id"] == session_id
+    assert inserted["athlete_id"] == "ATH-1"
+    assert inserted["session_date"] == "2026-09-12"

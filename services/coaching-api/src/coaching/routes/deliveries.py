@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from src.coaching import repository
 from src.coaching.auth import require_coach
-from src.coaching.pipeline import ConsentRequiredError, UnknownBaselineError, evaluate_delivery, nudge_and_reevaluate
+from src.coaching.pipeline import ConsentRequiredError, evaluate_delivery, nudge_and_reevaluate
 from src.measurement.errors import ThermalThrottleError
 from src.coaching.export import format_whatsapp_card
 from src.schemas.delivery import DeliveryIngestionRequest
@@ -18,8 +18,6 @@ def ingest_delivery(payload: DeliveryIngestionRequest) -> CoachingReport:
         return evaluate_delivery(payload)
     except ThermalThrottleError as exc:
         raise HTTPException(status_code=422, detail={"code": exc.code, "message": str(exc)}) from exc
-    except UnknownBaselineError as exc:
-        raise HTTPException(status_code=422, detail={"code": "ERR_UNKNOWN_BASELINE", "message": str(exc)}) from exc
     except ConsentRequiredError as exc:
         raise HTTPException(status_code=403, detail={"code": "ERR_CONSENT_REQUIRED", "message": str(exc)}) from exc
     except repository.NotFoundError as exc:
@@ -57,8 +55,6 @@ def nudge_ffs(delivery_id: str, frame_delta: int) -> CoachingReport:
         return nudge_and_reevaluate(delivery_id, frame_delta)
     except repository.NotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except UnknownBaselineError as exc:
-        raise HTTPException(status_code=422, detail={"code": "ERR_UNKNOWN_BASELINE", "message": str(exc)}) from exc
     except ConsentRequiredError as exc:
         raise HTTPException(status_code=403, detail={"code": "ERR_CONSENT_REQUIRED", "message": str(exc)}) from exc
     except ValueError as exc:

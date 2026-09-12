@@ -1,0 +1,13 @@
+-- The capture app has to send exactly one knee/hip/ankle per frame, but
+-- MediaPipe reports both sides - so it needs to know which leg is the front
+-- (landing) leg. That follows from the bowling arm: a right-arm bowler lands
+-- on the left leg, a left-arm bowler on the right. It also decides which
+-- side the tripod belongs on, so the front leg is the near, unoccluded one
+-- (a perfectly side-on view is where pose left/right labelling is weakest).
+--
+-- Nullable, because existing rows (the seeded demo bowler) predate it and a
+-- default would be a guess that silently mislabels every left-arm bowler.
+-- The API requires it on creation instead (schemas/athlete.py), so only
+-- legacy rows can be null, and clients must treat null as a setup error
+-- rather than assuming a side.
+alter table athletes add column bowling_arm text check (bowling_arm in ('RIGHT', 'LEFT'));

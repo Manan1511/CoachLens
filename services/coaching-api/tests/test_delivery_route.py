@@ -23,7 +23,6 @@ def make_payload(delivery_id: str = "DEL-1") -> dict:
     return {
         "delivery_id": delivery_id,
         "session_id": "SES-1",
-        "athlete_id": "ATH-1",
         "capture_metadata": {
             "fps": 120, "pacing_jitter_pct": 2.1, "shutter_speed_sec": 0.001,
             "distance_meters": 3.0, "tripod_height_meters": 1.1, "camera_roll_deg": 1.2,
@@ -150,3 +149,91 @@ def test_get_athlete_history_returns_repository_data(monkeypatch):
     response = client.get("/api/v1/athletes/ATH-1/history")
     assert response.status_code == 200
     assert response.json() == [{"id": "SES-1"}]
+
+
+def test_list_athletes_returns_roster(monkeypatch):
+    from src.schemas.athlete import AthleteSummary
+
+    monkeypatch.setattr(
+        athletes.repository,
+        "list_athletes",
+        lambda: [
+            AthleteSummary(
+                id="ATH-1", name="Demo Bowler", bowling_arm="RIGHT", guardian_consent=True, consent_blocked=False
+            )
+        ],
+    )
+    response = client.get("/api/v1/athletes")
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "id": "ATH-1",
+            "name": "Demo Bowler",
+            "bowling_arm": "RIGHT",
+            "guardian_consent": True,
+            "consent_blocked": False,
+        }
+    ]
+
+
+def test_create_athlete_passes_fields_to_repository(monkeypatch):
+    from src.schemas.athlete import AthleteSummary
+
+    received = {}
+
+    def fake_create(name, bowling_arm, dob, guardian_consent):
+        received.update(name=name, bowling_arm=bowling_arm, dob=dob, guardian_consent=guardian_consent)
+        return AthleteSummary(
+            id="ATH-NEW", name=name, bowling_arm=bowling_arm, guardian_consent=guardian_consent, consent_blocked=False
+        )
+
+    monkeypatch.setattr(athletes.repository, "create_athlete", fake_create)
+    response = client.post(
+        "/api/v1/athletes",
+        json={"name": "New Bowler", "bowling_arm": "LEFT", "dob": "2000-05-01", "guardian_consent": False},
+    )
+    assert response.status_code == 201
+    assert received["name"] == "New Bowler"
+    assert received["bowling_arm"] == "LEFT"
+    assert str(received["dob"]) == "2000-05-01"
+    assert response.json()["id"] == "ATH-NEW"
+
+
+def test_create_athlete_rejects_missing_bowling_arm():
+    """bowling_arm is required at creation so the capture app never has to
+    guess which leg is the front leg."""
+    response = client.post("/api/v1/athletes", json={"name": "No Arm"})
+    assert response.status_code == 422
+
+
+def test_create_athlete_rejects_invalid_bowling_arm():
+    response = client.post("/api/v1/athletes", json={"name": "Bad Arm", "bowling_arm": "SIDEWAYS"})
+    assert response.status_code == 422
+
+
+def test_start_or_resume_session_returns_repository_result(monkeypatch):
+    import datetime
+
+    monkeypatch.setattr(
+        athletes.repository,
+        "get_or_create_session",
+        lambda athlete_id: ("SES-NEW", datetime.date(2026, 9, 12), True),
+    )
+    response = client.post("/api/v1/athletes/ATH-1/sessions")
+    assert response.status_code == 200
+    body = response.json()
+    assert body == {
+        "session_id": "SES-NEW",
+        "athlete_id": "ATH-1",
+        "session_date": "2026-09-12",
+        "created": True,
+    }
+
+
+def test_start_or_resume_session_404_for_unknown_athlete(monkeypatch):
+    def raise_not_found(athlete_id):
+        raise repository.NotFoundError(f"No athlete found for athlete_id={athlete_id!r}")
+
+    monkeypatch.setattr(athletes.repository, "get_or_create_session", raise_not_found)
+    response = client.post("/api/v1/athletes/ATH-MISSING/sessions")
+    assert response.status_code == 404

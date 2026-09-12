@@ -39,11 +39,10 @@ def make_frames(ankle_conf: float = 0.92, knee_conf: float = 0.95, hip_conf: flo
     return frames
 
 
-def make_request(delivery_id="DEL-1", athlete_id="ATH-1", ankle_conf=0.92, knee_conf=0.95, hip_conf=0.96):
+def make_request(delivery_id="DEL-1", session_id="SES-1", ankle_conf=0.92, knee_conf=0.95, hip_conf=0.96):
     return DeliveryIngestionRequest(
         delivery_id=delivery_id,
-        session_id="SES-1",
-        athlete_id=athlete_id,
+        session_id=session_id,
         capture_metadata=CaptureMetadata(
             fps=FPS, pacing_jitter_pct=2.1, shutter_speed_sec=0.001,
             distance_meters=3.0, tripod_height_meters=1.1, camera_roll_deg=1.2,
@@ -55,6 +54,7 @@ def make_request(delivery_id="DEL-1", athlete_id="ATH-1", ankle_conf=0.92, knee_
 @pytest.fixture
 def fake_repo(monkeypatch):
     calls = {"saved_verdicts": [], "saved_deliveries": []}
+    monkeypatch.setattr(repository, "get_athlete_id_for_session", lambda session_id: "ATH-1")
     monkeypatch.setattr(repository, "save_delivery", lambda req: calls["saved_deliveries"].append(req))
     monkeypatch.setattr(repository, "get_baseline", lambda athlete_id, metric: repository.BaselineRecord(148.0, 3.5))
     monkeypatch.setattr(repository, "get_rolling_history_deltas", lambda athlete_id, metric: [])
@@ -83,10 +83,20 @@ def test_evaluate_delivery_persists_and_returns_report(fake_repo):
     assert fake_repo["saved_verdicts"][0]["metric"] == pipeline.FRONT_KNEE_METRIC
 
 
-def test_evaluate_delivery_raises_on_unknown_baseline(monkeypatch, fake_repo):
+def test_evaluate_delivery_returns_benchmark_pending_without_baseline(monkeypatch, fake_repo):
+    """A delivery from an athlete with no confirmed baseline is measured and
+    persisted as BENCHMARK_PENDING, not rejected - see BACKEND_PLAN.md's
+    "Known gaps" entry on why rejecting it was a chicken-and-egg (a baseline
+    is itself computed from a batch of these benchmark deliveries)."""
     monkeypatch.setattr(repository, "get_baseline", lambda athlete_id, metric: None)
-    with pytest.raises(pipeline.UnknownBaselineError):
-        pipeline.evaluate_delivery(make_request())
+
+    report = pipeline.evaluate_delivery(make_request())
+
+    assert report.verdict.status == DeliveryStatus.BENCHMARK_PENDING
+    assert report.kinematics.front_knee_angle_deg is not None  # still measured
+    assert report.baselines.fixed_reference_median_deg is None  # nothing to score against
+    assert len(fake_repo["saved_deliveries"]) == 1
+    assert len(fake_repo["saved_verdicts"]) == 1
 
 
 def _minor_dob(years_old: int) -> date:
@@ -143,17 +153,38 @@ def test_evaluate_delivery_raises_not_found_for_unknown_athlete(monkeypatch, fak
         pipeline.evaluate_delivery(make_request())
 
 
-def test_evaluate_delivery_does_not_persist_delivery_on_unknown_baseline(monkeypatch, fake_repo):
-    """Regression test: an UnknownBaselineError must be raised before
-    save_delivery is called, not after - otherwise a delivery row is left
-    orphaned in the DB with no verdict (verdicts.delivery_id has a hard FK
-    to deliveries, so the verdict can never be written after the fact
-    without re-ingesting the whole payload)."""
-    monkeypatch.setattr(repository, "get_baseline", lambda athlete_id, metric: None)
-    with pytest.raises(pipeline.UnknownBaselineError):
+def test_evaluate_delivery_raises_not_found_for_unknown_session(monkeypatch, fake_repo):
+    def raise_not_found(session_id):
+        raise repository.NotFoundError(f"No session found for session_id={session_id!r}")
+
+    monkeypatch.setattr(repository, "get_athlete_id_for_session", raise_not_found)
+    with pytest.raises(repository.NotFoundError):
         pipeline.evaluate_delivery(make_request())
     assert fake_repo["saved_deliveries"] == []
     assert fake_repo["saved_verdicts"] == []
+
+
+def test_evaluate_delivery_scores_against_athlete_resolved_from_session(monkeypatch, fake_repo):
+    """Regression test: athlete identity for scoring must come from
+    session_id -> sessions.athlete_id, not from any client-supplied field -
+    a mismatch between "who the mobile app thinks is bowling" and "which
+    session this delivery actually belongs to" (e.g. a coach quick-switching
+    bowlers in one nets recording session) must not silently score against
+    the wrong athlete's baseline."""
+    baseline_lookups = []
+    monkeypatch.setattr(repository, "get_athlete_id_for_session", lambda session_id: f"ATH-FOR-{session_id}")
+    monkeypatch.setattr(
+        repository,
+        "get_baseline",
+        lambda athlete_id, metric: baseline_lookups.append(athlete_id) or repository.BaselineRecord(148.0, 3.5),
+    )
+    monkeypatch.setattr(
+        repository, "get_athlete_consent_info", lambda athlete_id: repository.AthleteConsentInfo(dob=None, guardian_consent=False)
+    )
+
+    pipeline.evaluate_delivery(make_request(session_id="SES-77"))
+
+    assert baseline_lookups == ["ATH-FOR-SES-77"]
 
 
 def test_evaluate_delivery_marks_filtered_true_for_normal_delivery(fake_repo):

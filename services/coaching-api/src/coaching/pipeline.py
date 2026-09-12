@@ -5,9 +5,10 @@ src/coaching/repository.py.
 """
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 
 from src.coaching import repository
+from src.coaching.consent import MINOR_AGE_CUTOFF, is_consent_blocked
 from src.interpretation.angles import forward_trunk_tilt_deg, front_knee_angle_deg
 from src.interpretation.baseline import evaluate_delivery_deviation
 from src.measurement.audit import audit_frame_pacing
@@ -25,6 +26,7 @@ _STATUS_SUMMARIES = {
     DeliveryStatus.MECHANICAL_WATCH: "Isolated deviation flagged for replay review.",
     DeliveryStatus.TECHNICAL_CONCERN: "Persistent deviation from baseline mechanics detected.",
     DeliveryStatus.DATA_SUPPRESSED: "Landmark visibility below threshold at the FFS frame.",
+    DeliveryStatus.BENCHMARK_PENDING: "Measured, not yet scored - no confirmed baseline for this athlete.",
 }
 
 # Only assigned when a delivery is flagged TECHNICAL_CONCERN for the knee
@@ -34,16 +36,9 @@ _STATUS_SUMMARIES = {
 TECHNICAL_CONCERN_DRILL_ID = "DRL-SNC-012"
 
 
-class UnknownBaselineError(Exception):
-    """Raised when the athlete has no confirmed baseline for this metric yet."""
-
-
 class ConsentRequiredError(Exception):
     """Raised when an athlete under MINOR_AGE_CUTOFF has no recorded guardian
     consent (PRD §10 Adolescent Consent Gate)."""
-
-
-MINOR_AGE_CUTOFF = 18
 
 
 def _check_consent(athlete_id: str) -> None:
@@ -51,23 +46,14 @@ def _check_consent(athlete_id: str) -> None:
     (< 18 years) require verifiable digital guardian acknowledgment before
     profile activation." Called before any measurement/persistence work.
 
-    If the athlete's date of birth isn't on file, this cannot determine
-    minor status and does NOT block - that's a real gap (an athlete with no
-    recorded dob bypasses the gate entirely), not a silent guarantee of
-    enforcement. Treat "dob missing" as a data-completeness problem to fix
-    at registration time, not something this function can safely default to
-    blocking, since that would also lock out adults who simply never had a
-    dob recorded (e.g. existing pre-Milestone-7 seed/demo data).
+    The blocked/not-blocked decision itself lives in `consent.py` so this
+    path and the athlete roster agree by construction — including its
+    documented limitation that a missing dob does not block.
     """
     info = repository.get_athlete_consent_info(athlete_id)
     if info is None:
         raise repository.NotFoundError(f"No athlete found for athlete_id={athlete_id!r}")
-    if info.dob is None:
-        return
-
-    today = date.today()
-    age_years = today.year - info.dob.year - ((today.month, today.day) < (info.dob.month, info.dob.day))
-    if age_years < MINOR_AGE_CUTOFF and not info.guardian_consent:
+    if is_consent_blocked(info.dob, info.guardian_consent):
         raise ConsentRequiredError(
             f"Athlete {athlete_id!r} is under {MINOR_AGE_CUTOFF} with no recorded guardian consent; "
             f"cannot process deliveries until consent is confirmed."
@@ -127,11 +113,11 @@ def _score(
 ) -> _Scored:
     """Pure decision logic: quality firewall -> angle -> baseline lookup ->
     interpretation. Only reads from the repository (get_baseline,
-    get_rolling_history_deltas) - never writes. May raise
-    UnknownBaselineError.
+    get_rolling_history_deltas) - never writes.
 
     Kept separate from persistence specifically so evaluate_delivery can
-    call this *before* writing the delivery row: if this raises, nothing
+    call this *before* writing the delivery row: if this raises (currently
+    only possible for reasons outside this function, e.g. consent), nothing
     has been persisted, avoiding an orphaned delivery with no verdict.
     """
     trunk_tilt, trunk_tilt_conf = _compute_trunk_tilt(all_frames, ffs_frame)
@@ -161,9 +147,25 @@ def _score(
 
     baseline = repository.get_baseline(athlete_id, FRONT_KNEE_METRIC)
     if baseline is None:
-        raise UnknownBaselineError(
-            f"Athlete {athlete_id!r} has no confirmed {FRONT_KNEE_METRIC} baseline. "
-            f"Confirm one via POST /api/v1/athletes/{{athlete_id}}/baseline first."
+        # No confirmed baseline yet - measure and persist (BENCHMARK_PENDING)
+        # rather than reject the whole delivery. A baseline is itself
+        # computed from 8-10 of these benchmark deliveries (PRD §4 Layer 2),
+        # so refusing to store any of them until one already exists was a
+        # chicken-and-egg that left every new athlete permanently stuck:
+        # the only thing that *did* persist without a baseline was
+        # DATA_SUPPRESSED (the quality firewall short-circuits earlier),
+        # so a new athlete's unusable deliveries were kept and usable ones
+        # discarded. See BACKEND_PLAN.md's "Known gaps" entry.
+        return _Scored(
+            kinematics=kinematics,
+            verdict=Verdict(
+                status=DeliveryStatus.BENCHMARK_PENDING,
+                window_pattern=WindowPattern.NOT_APPLICABLE,
+                summary=_STATUS_SUMMARIES[DeliveryStatus.BENCHMARK_PENDING],
+            ),
+            baselines=Baselines(),
+            drill_id=None,
+            trigger_deltas=None,
         )
 
     history = repository.get_rolling_history_deltas(athlete_id, FRONT_KNEE_METRIC)
@@ -247,7 +249,12 @@ def _filtered_or_raw(frames: list[KeypointFrame], fps: int) -> tuple[list[Keypoi
 
 
 def evaluate_delivery(request: DeliveryIngestionRequest) -> CoachingReport:
-    _check_consent(request.athlete_id)
+    # athlete_id is resolved from session_id, not accepted on the request -
+    # see DeliveryIngestionRequest.session_id's docstring. This also means an
+    # unknown session_id raises NotFoundError here, before anything is
+    # scored or persisted.
+    athlete_id = repository.get_athlete_id_for_session(request.session_id)
+    _check_consent(athlete_id)
 
     frames = request.raw_keypoints
     fps = request.capture_metadata.fps
@@ -258,12 +265,12 @@ def evaluate_delivery(request: DeliveryIngestionRequest) -> CoachingReport:
     ffs_frame_number = detect_ffs_frame(filtered_frames)
     ffs_frame = next(f for f in filtered_frames if f.frame == ffs_frame_number)
 
-    # Score before persisting anything: if the athlete has no baseline yet,
-    # this raises UnknownBaselineError here, before the delivery row (or a
-    # verdict, which has a hard FK dependency on it) is ever written -
-    # avoiding an orphaned delivery with no verdict and a misleading 404 on
-    # a later GET /reports/{id}.
-    scored = _score(request.athlete_id, ffs_frame_number, ffs_frame, was_filtered, filtered_frames)
+    # Score before persisting anything: if this raises (e.g. a downstream
+    # data error), nothing has been persisted, avoiding an orphaned delivery
+    # with no verdict and a misleading 404 on a later GET /reports/{id}. A
+    # missing baseline no longer raises here - see _score's BENCHMARK_PENDING
+    # branch.
+    scored = _score(athlete_id, ffs_frame_number, ffs_frame, was_filtered, filtered_frames)
 
     repository.save_delivery(request)
     return _persist_and_build_report(request.delivery_id, scored)

@@ -81,6 +81,35 @@ def data_suppressed_report() -> CoachingReport:
     )
 
 
+@pytest.fixture
+def benchmark_pending_report() -> CoachingReport:
+    return CoachingReport(
+        report_id=SAMPLE_REPORT_ID,
+        delivery_id=SAMPLE_DELIVERY_ID,
+        evaluation_timestamp=SAMPLE_TIMESTAMP,
+        kinematics=Kinematics(ffs_frame=73, front_knee_angle_deg=147.5, front_knee_confidence=0.95),
+        baselines=Baselines(),
+        verdict=Verdict(
+            status=DeliveryStatus.BENCHMARK_PENDING,
+            window_pattern=WindowPattern.NOT_APPLICABLE,
+            window_matches=0,
+            summary="Measured, not yet scored - no confirmed baseline for this athlete.",
+        ),
+    )
+
+
+def test_format_whatsapp_card_benchmark_pending(benchmark_pending_report: CoachingReport) -> None:
+    """Must not use the FORM_BENCHMARK check-mark or the generic
+    warning icon reserved for actual deviations - see export.py's
+    status_icon branching."""
+    card = format_whatsapp_card(benchmark_pending_report)
+    assert "BENCHMARK PENDING" in card
+    assert "📊" in card
+    assert "⚠️ *BENCHMARK PENDING*" not in card
+    assert "Front Knee Angle: 147.5°" in card
+    assert "Baseline Reference" not in card  # nothing to reference yet
+
+
 def test_format_whatsapp_card_benchmark(benchmark_report: CoachingReport) -> None:
     card = format_whatsapp_card(benchmark_report)
     assert "*Delivery:* DEL-20260912-0042" in card

@@ -22,7 +22,7 @@ def main() -> None:
     db = get_supabase()
 
     db.table("athletes").upsert(
-        {"id": ATHLETE_ID, "name": "Demo Bowler", "guardian_consent": True}
+        {"id": ATHLETE_ID, "name": "Demo Bowler", "guardian_consent": True, "bowling_arm": "RIGHT"}
     ).execute()
 
     db.table("sessions").upsert(
