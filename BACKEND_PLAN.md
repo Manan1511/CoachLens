@@ -48,11 +48,18 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blo
 - [x] Unit tests with synthetic keypoint sequences (`tests/test_measurement.py`, 11 tests) — including a mutation check (temporarily broke `detect_ffs_frame` to confirm the test actually fails on a wrong implementation, not just tautologically passes)
 
 ## Milestone 4 — Interpretation layer (pure functions)
-- [ ] Front Knee Extension angle calculation at FFS frame
-- [ ] Forward Trunk Tilt calculation at release frame
-- [ ] Dual-baseline delta: fixed reference (median ± IQR) — rolling 6-week median deferred (no data yet, see Dead End Registry)
-- [ ] 3-of-5 rolling window classifier → `MECHANICAL_WATCH` / `TECHNICAL_CONCERN`
-- [ ] Unit test every status transition explicitly
+- [x] Front Knee Extension angle calculation (`src/interpretation/angles.py::front_knee_angle_deg`) — verified against known geometry (straight leg = 180°, right-angle bend = 90°), not just plausible-looking numbers
+- [x] Forward Trunk Tilt calculation (`forward_trunk_tilt_deg`) — verified upright = 0°, 45° lean = 45°
+- [x] Dual-baseline delta (`src/interpretation/baseline.py::evaluate_delivery_deviation`) — fixed reference (median ± IQR) only; rolling 6-week median still deferred, no data exists yet
+- [x] 3-of-5 rolling window classifier → `FORM_BENCHMARK` / `MECHANICAL_WATCH` / `TECHNICAL_CONCERN`, ported from PRD §6.2's reference pseudocode with the canonical status names
+- [x] Unit tests for every status transition (`tests/test_interpretation.py`, 25 total incl. measurement) — including one against the PRD §7.2 example's exact numbers, and one that caught a wrong assumption in my own test (current delivery always matches itself in the rolling window, so the floor is 1 match not 0 — fixed the test, not the implementation, since the implementation was right)
+
+## Interim: demo pipeline wiring (ahead of Milestone 5)
+- [x] `src/coaching/pipeline.py::evaluate_delivery` orchestrates measurement → interpretation for the knee-angle metric only (trunk-tilt wiring deferred to Milestone 5 proper), using an **in-memory** `DEMO_BASELINES`/`DEMO_ROLLING_HISTORY` store instead of Supabase — explicitly temporary, called out in the module docstring, not the final design. Resets on every server restart.
+- [x] Wired into `POST /api/v1/sessions/delivery` / `GET /api/v1/reports/{delivery_id}` with proper error mapping (`ThermalThrottleError` → 422 `ERR_THERMAL_THROTTLE`, unknown athlete baseline → 422 `ERR_UNKNOWN_BASELINE`)
+- [x] Route-level tests (`tests/test_delivery_route.py`) hit the real HTTP layer via `TestClient`, not just unit-level functions
+- [x] Verified live via Swagger UI at `/docs` (server launched through `.claude/launch.json` + Browser preview) — POST returned a real 200 with computed `ffs_frame`, `front_knee_angle_deg`, and a `MECHANICAL_WATCH` verdict, round-tripped through GET
+- [x] Swagger UI switched to a dark theme (`/docs` now serves `swagger-ui.css` + an appended `theme-dark.css` overlay, since the theme CSS alone breaks layout without the base stylesheet)
 
 ## Milestone 5 — Coaching layer / API routes
 - [ ] `POST /api/v1/sessions/delivery` — ingest, run full pipeline, persist verdict
