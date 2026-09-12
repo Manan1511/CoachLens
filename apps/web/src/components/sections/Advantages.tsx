@@ -3,6 +3,7 @@ import { Reveal, Stagger } from '@/components/ui/Reveal';
 import { Dim, SectionLabel, SectionTitle } from '@/components/ui/SectionHeading';
 import { ADVANTAGES, ADVANTAGES_HEADER } from '@/content/advantages';
 import { useApproachScroll } from '@/hooks/useApproachScroll';
+import { PoseRunningSkeleton } from '@/components/ui/PoseRunningSkeleton';
 import type { Advantage } from '@/types';
 
 const SLIDE_VH = 60;
@@ -76,14 +77,8 @@ function PinnedApproach() {
           </div>
         </div>
 
-        <div className="relative flex items-center justify-center overflow-hidden">
-          <img
-            ref={imageRef}
-            className="max-h-[70vh] object-contain"
-            src="/images/skeletal-overlay.jpg"
-            alt="Joint tracking overlaid on a bowler's delivery stride"
-            loading="lazy"
-          />
+        <div ref={imageRef} className="relative flex items-center justify-center overflow-hidden">
+          <PoseRunningSkeleton className="w-full max-w-[360px]" />
         </div>
       </div>
     </div>
@@ -95,12 +90,9 @@ function PinnedApproach() {
 function StaticApproach() {
   return (
     <div className="container md:hidden">
-      <img
-        className="mb-lg max-h-[45vh] w-full object-contain"
-        src="/images/skeletal-overlay.jpg"
-        alt="Joint tracking overlaid on a bowler's delivery stride"
-        loading="lazy"
-      />
+      <div className="mb-lg flex justify-center">
+        <PoseRunningSkeleton className="w-full max-w-[340px]" />
+      </div>
       <Stagger className="flex flex-col gap-lg">
         {GROUPS.map(({ group, items }) => (
           <div key={group}>

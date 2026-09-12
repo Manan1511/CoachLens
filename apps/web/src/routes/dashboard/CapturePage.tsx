@@ -7,6 +7,7 @@ import { usePoseLandmarker, POSE_LANDMARK } from '@/lib/pose/usePoseLandmarker';
 import { useSessionPool, type PoolMember } from '@/lib/pose/useSessionPool';
 import { useDeviceOrientation } from '@/lib/pose/useDeviceOrientation';
 import { useDeliveryCapture } from '@/lib/pose/useDeliveryCapture';
+import { useSpellCapture, type SpellToast, type CapturedDelivery } from '@/lib/pose/useSpellCapture';
 import type { Athlete, BowlingArm } from '@/lib/api/types';
 
 /** CAPTURE_PLAN.md Milestone 1: session-pool setup, then a quick-select
@@ -16,18 +17,9 @@ import type { Athlete, BowlingArm } from '@/lib/api/types';
  *  screen if a pool is already resolved (see useSessionPool's localStorage
  *  persistence).
  *
- *  Milestone 0.5 (real WASM inference cost on target hardware) is done -
- *  see CAPTURE_PLAN.md. The diagnostic readout (video/landmarks/inference
- *  time) stays visible since it's cheap to keep and useful for any future
- *  regression. The CPU-vs-GPU delegate bench that lived here briefly during
- *  that milestone's investigation was removed once capture itself was
- *  working - it was debug tooling, not something a coach needs on this
- *  screen; the desktop-hardware finding it produced (GPU ~3x faster than CPU
- *  when it actually engages) is recorded in CAPTURE_PLAN.md, and the
- *  still-open question of whether the phone's GPU delegate is really
- *  engaging can be re-run via camera-debug.html-style ad hoc script next
- *  time the device is connected, rather than carrying the tooling in
- *  production code indefinitely. */
+ *  Updated for Spell Mode (auto-trigger with ring buffer): the manual
+ *  "Capture delivery" button is replaced by Start/End Spell controls.
+ *  A manual fallback button is preserved for edge cases. */
 export function CapturePage() {
   const { pool, resolving, error: poolError, setPoolFromAthletes, addToPool, clearPool } = useSessionPool();
 
@@ -136,6 +128,7 @@ function CaptureScreen({
   const [selectedAthleteId, setSelectedAthleteId] = useState<string>(pool[0]?.athlete.id ?? '');
   const [showAddPicker, setShowAddPicker] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
+  const [showDeliveryLog, setShowDeliveryLog] = useState(false);
   const { videoRef, videoSize, frame, cameraError, modelError, ready } = usePoseLandmarker(true);
   const orientation = useDeviceOrientation();
   const navigate = useNavigate();
@@ -143,7 +136,8 @@ function CaptureScreen({
   const selected = pool.find((m) => m.athlete.id === selectedAthleteId) ?? pool[0];
   const rightKnee = frame?.landmarks[POSE_LANDMARK.rightKnee];
 
-  const capture = useDeliveryCapture({
+  // --- Spell Mode (auto-trigger) ---
+  const spell = useSpellCapture({
     sessionId: selected?.sessionId ?? '',
     bowlingArm: selected?.athlete.bowling_arm ?? null,
     frame,
@@ -151,67 +145,124 @@ function CaptureScreen({
     cameraRollDeg: orientation.reading?.roll ?? null,
   });
 
-  // Navigation is a side effect of a state transition, not something to
-  // trigger inline from the submit handler - useDeliveryCapture doesn't
-  // know about routing, and reaching 'done' via a re-render (not a direct
-  // callback) is what keeps that separation clean.
-  useEffect(() => {
-    if (capture.state.status === 'done') {
-      navigate(`/app/deliveries/${capture.state.report.delivery_id}`);
-    }
-  }, [capture.state, navigate]);
+  // --- Manual fallback (for edge cases where auto-trigger doesn't fire) ---
+  const manualCapture = useDeliveryCapture({
+    sessionId: selected?.sessionId ?? '',
+    bowlingArm: selected?.athlete.bowling_arm ?? null,
+    frame,
+    videoSize,
+    cameraRollDeg: orientation.reading?.roll ?? null,
+  });
 
-  const canCapture =
-    ready && !cameraError && !modelError && !!selected?.athlete.bowling_arm &&
-    capture.state.status !== 'recording' && capture.state.status !== 'submitting';
+  // Navigate to verdict page on manual capture completion
+  useEffect(() => {
+    if (manualCapture.state.status === 'done') {
+      navigate(`/app/deliveries/${manualCapture.state.report.delivery_id}`);
+    }
+  }, [manualCapture.state, navigate]);
+
+  const spellActive = spell.state.status !== 'idle';
+  const canStartSpell = ready && !cameraError && !modelError && !!selected?.athlete.bowling_arm;
+  const canManualCapture =
+    canStartSpell &&
+    !spellActive &&
+    manualCapture.state.status !== 'recording' &&
+    manualCapture.state.status !== 'submitting';
 
   return (
     <div className="relative -mx-md -mt-24 h-screen overflow-hidden bg-canvas sm:-mt-28">
-      {/* No mirroring here - that's a front/selfie-camera convention (so the
-          preview matches what looking in a real mirror feels like). This is
-          the rear ("environment") camera filming a bowler from the side;
-          mirroring it would show the delivery reversed left-right, which is
-          actively misleading for a coach checking framing. Confirmed as a
-          real bug on-device during the Milestone 0.5 spike (2026-09-13) -
-          doesn't affect the actual keypoint data sent to the backend, since
-          CSS transforms never touch what detectForVideo reads from the
-          <video> element, only the on-screen preview. */}
       <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
 
-      {/* CAPTURE_PLAN.md Milestone 3: one tap buffers CAPTURE_WINDOW_MS of
-          frames, extracts + submits them, and (via the effect above) lands
-          on the existing DeliveryReportPage for the verdict - no separate
-          verdict UI built here, since VerdictCard/NudgeFfsControl/
-          ActionBar/WhatsAppExport already exist and cover it. */}
+      {/* --- Status Pill (top center) --- */}
+      {spellActive && (
+        <div className="absolute inset-x-0 top-16 flex justify-center">
+          <SpellStatusPill state={spell.state} />
+        </div>
+      )}
+
+      {/* --- Toast Notifications (below status pill) --- */}
+      <div className="absolute inset-x-0 top-28 flex flex-col items-center gap-2 px-md">
+        {spell.toasts.map((toast) => (
+          <ToastNotification
+            key={toast.id}
+            toast={toast}
+            onTap={() => {
+              const delivery = spell.deliveryLog[toast.deliveryNumber - 1];
+              if (delivery) navigate(`/app/deliveries/${delivery.deliveryId}`);
+            }}
+          />
+        ))}
+      </div>
+
+      {/* --- Spell Controls (bottom center, above quick-select) --- */}
       <div className="absolute inset-x-0 bottom-[7.5rem] flex flex-col items-center gap-2 px-md">
         {!selected?.athlete.bowling_arm && (
           <p className="rounded-full bg-black/70 px-4 py-2 text-caption text-ink-dim backdrop-blur-sm">
             Bowling arm not set for {selected?.athlete.name ?? 'this athlete'} — can't determine the front leg.
           </p>
         )}
-        {capture.state.status === 'error' && (
+
+        {manualCapture.state.status === 'error' && (
           <p className="rounded-full bg-status-red/16 px-4 py-2 text-caption text-status-red backdrop-blur-sm">
-            {capture.state.message}
+            {manualCapture.state.message}
           </p>
         )}
-        <button
-          type="button"
-          onClick={capture.start}
-          disabled={!canCapture}
-          className="flex items-center gap-2 rounded-full bg-status-red px-6 py-3.5 text-body font-semibold text-white shadow-glow-strong transition-opacity disabled:opacity-40"
-        >
-          <span className="size-3 rounded-full bg-white" aria-hidden />
-          {capture.state.status === 'recording'
-            ? `Capturing… ${capture.state.framesCaptured}`
-            : capture.state.status === 'submitting'
-              ? 'Sending…'
-              : 'Capture delivery'}
-        </button>
+
+        {/* Primary: Start/End Spell button */}
+        {!spellActive ? (
+          <div className="flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={spell.startSpell}
+              disabled={!canStartSpell}
+              className="flex items-center gap-2 rounded-full bg-emerald-600 px-6 py-3.5 text-body font-semibold text-white shadow-glow-strong transition-opacity disabled:opacity-40"
+            >
+              <span className="size-3 rounded-full bg-white" aria-hidden />
+              Start Spell
+            </button>
+            {/* Manual fallback when spell is not active */}
+            <button
+              type="button"
+              onClick={manualCapture.start}
+              disabled={!canManualCapture}
+              className="rounded-full px-4 py-2 text-caption text-ink-dim underline transition-opacity disabled:opacity-40"
+            >
+              {manualCapture.state.status === 'recording'
+                ? `Capturing… ${manualCapture.state.framesCaptured}`
+                : manualCapture.state.status === 'submitting'
+                  ? 'Sending…'
+                  : 'Manual capture'}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            {/* Delivery counter badge */}
+            <button
+              type="button"
+              onClick={() => setShowDeliveryLog(true)}
+              className="flex items-center gap-1.5 rounded-full bg-black/70 px-4 py-2.5 text-body font-medium text-ink backdrop-blur-sm"
+            >
+              <span className="text-accent">
+                {spell.state.status !== 'idle'
+                  ? (spell.state as { deliveriesCaptured: number }).deliveriesCaptured
+                  : 0}
+              </span>
+              <span className="text-ink-dim">deliveries</span>
+            </button>
+
+            {/* End Spell button */}
+            <button
+              type="button"
+              onClick={spell.endSpell}
+              className="flex items-center gap-2 rounded-full border border-status-red/30 bg-status-red/16 px-5 py-2.5 text-body font-semibold text-status-red backdrop-blur-sm"
+            >
+              End Spell
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Quick-select strip: pool members only, one tap, no search - see
-          CAPTURE_PLAN.md §6. Selected name rendered large enough that a
-          wrong pick is obvious before recording, not after. */}
+      {/* --- Quick-select strip --- */}
       <div className="absolute inset-x-0 bottom-0 border-t border-line bg-black/70 p-3 backdrop-blur-sm">
         <div className="mb-2 flex items-center gap-2 overflow-x-auto">
           {pool.map((member) => (
@@ -236,10 +287,6 @@ function CaptureScreen({
           >
             + Add
           </button>
-          {/* Pushed to the far end of the scroll strip rather than given its
-              own prominent spot - ending the session is rare and a
-              one-tap-to-undo-everything action shouldn't be the easiest
-              thing to hit. Confirmation sheet below is the actual guard. */}
           <button
             type="button"
             onClick={() => setShowEndConfirm(true)}
@@ -253,6 +300,7 @@ function CaptureScreen({
         )}
       </div>
 
+      {/* --- End session confirmation --- */}
       {showEndConfirm && (
         <div
           className="absolute inset-0 z-10 flex items-end bg-black/70"
@@ -264,10 +312,6 @@ function CaptureScreen({
           >
             <p className="mb-1 text-body font-medium text-ink">End this session?</p>
             <p className="mb-md text-small text-ink-dim">
-              {/* Only the local pool selection is lost - the deliveries and
-                  sessions already recorded for these athletes stay exactly as
-                  they are server-side. This is un-picking who's at the nets,
-                  not deleting anything. */}
               You'll need to re-pick who's at the nets to capture again. Nothing already recorded is affected.
             </p>
             <div className="flex gap-2">
@@ -280,7 +324,10 @@ function CaptureScreen({
               </button>
               <button
                 type="button"
-                onClick={onEndSession}
+                onClick={() => {
+                  spell.endSpell();
+                  onEndSession();
+                }}
                 className="flex-1 rounded-full bg-status-red/16 px-4 py-3 text-body font-semibold text-status-red"
               >
                 End session
@@ -290,6 +337,7 @@ function CaptureScreen({
         </div>
       )}
 
+      {/* --- Diagnostics overlay (top left) --- */}
       <div className="absolute left-4 top-4 rounded-xl border border-line bg-black/55 p-3 backdrop-blur-sm">
         <DiagnosticRow label="Video" value={videoSize ? `${videoSize.width}x${videoSize.height}` : '—'} />
         <DiagnosticRow label="Landmarks" value={frame ? frame.landmarks.length : '—'} />
@@ -301,12 +349,24 @@ function CaptureScreen({
           label="Inference time"
           value={frame ? `${frame.inferenceMs.toFixed(1)}ms` : '—'}
         />
+        {spellActive && (
+          <DiagnosticRow label="Ring buffer" value={`${spell.ringBuffer.size()} frames`} />
+        )}
         {!ready && !cameraError && !modelError && <DiagnosticRow label="Status" value="Loading…" />}
         {cameraError && <DiagnosticRow label="Camera error" value={cameraError} isError />}
         {modelError && <DiagnosticRow label="Model error" value={modelError} isError />}
       </div>
 
       <AlignmentOverlay bowlingArm={selected?.athlete.bowling_arm ?? null} orientation={orientation} />
+
+      {/* --- Delivery Log slide-up panel --- */}
+      {showDeliveryLog && (
+        <DeliveryLogPanel
+          deliveries={spell.deliveryLog}
+          onClose={() => setShowDeliveryLog(false)}
+          onTapDelivery={(deliveryId) => navigate(`/app/deliveries/${deliveryId}`)}
+        />
+      )}
 
       {showAddPicker && (
         <AddToPoolPicker
@@ -322,31 +382,130 @@ function CaptureScreen({
   );
 }
 
-/** Which side of the bowler the tripod goes on, per the front-leg reasoning
- *  in BACKEND_PLAN.md's Milestone 9 notes and CAPTURE_PLAN.md §2: the front
- *  (landing) leg is the near, unoccluded one for a side-on sagittal-crease
- *  view (CoachLens_PRD.md), and it follows deterministically from the
- *  bowling arm - a right-arm bowler lands on the left leg, so the camera
- *  belongs on the bowler's left to keep that leg nearest and unobstructed. */
+// --- Spell Status Pill ---
+
+function SpellStatusPill({ state }: { state: ReturnType<typeof useSpellCapture>['state'] }) {
+  const statusConfig = {
+    watching: { label: '● WATCHING', color: 'text-emerald-400', bg: 'bg-emerald-900/60', animate: 'animate-pulse' },
+    'post-trigger': { label: '● CAPTURING…', color: 'text-amber-400', bg: 'bg-amber-900/60', animate: '' },
+    submitting: { label: '● SENDING…', color: 'text-amber-400', bg: 'bg-amber-900/60', animate: '' },
+    cooldown: { label: '● COOLDOWN', color: 'text-zinc-400', bg: 'bg-zinc-800/60', animate: '' },
+    idle: { label: '', color: '', bg: '', animate: '' },
+  } as const;
+
+  const config = statusConfig[state.status];
+  if (state.status === 'idle') return null;
+
+  return (
+    <span
+      className={`rounded-full px-4 py-1.5 text-caption font-bold uppercase tracking-widest backdrop-blur-sm ${config.bg} ${config.color} ${config.animate}`}
+    >
+      {config.label}
+    </span>
+  );
+}
+
+// --- Toast Notification ---
+
+function ToastNotification({ toast, onTap }: { toast: SpellToast; onTap: () => void }) {
+  const statusColors: Record<string, string> = {
+    FORM_BENCHMARK: 'border-emerald-500/40 bg-emerald-900/70 text-emerald-300',
+    MECHANICAL_WATCH: 'border-amber-500/40 bg-amber-900/70 text-amber-300',
+    TECHNICAL_CONCERN: 'border-status-red/40 bg-red-900/70 text-status-red',
+    DATA_SUPPRESSED: 'border-zinc-500/40 bg-zinc-800/70 text-zinc-400',
+    BENCHMARK_PENDING: 'border-blue-500/40 bg-blue-900/70 text-blue-300',
+    ERROR: 'border-status-red/40 bg-red-900/70 text-status-red',
+  };
+
+  const statusEmoji: Record<string, string> = {
+    FORM_BENCHMARK: '✓',
+    MECHANICAL_WATCH: '⚠',
+    TECHNICAL_CONCERN: '⚠️',
+    DATA_SUPPRESSED: '—',
+    BENCHMARK_PENDING: '⏳',
+    ERROR: '✗',
+  };
+
+  const colorClass = statusColors[toast.status] ?? statusColors.ERROR;
+  const emoji = statusEmoji[toast.status] ?? '?';
+
+  return (
+    <button
+      type="button"
+      onClick={onTap}
+      className={`rounded-full border px-4 py-2 text-caption font-semibold backdrop-blur-sm transition-all ${colorClass}`}
+    >
+      Delivery #{toast.deliveryNumber} · {toast.status.replace(/_/g, ' ')} {emoji}
+    </button>
+  );
+}
+
+// --- Delivery Log Panel ---
+
+function DeliveryLogPanel({
+  deliveries,
+  onClose,
+  onTapDelivery,
+}: {
+  deliveries: CapturedDelivery[];
+  onClose: () => void;
+  onTapDelivery: (deliveryId: string) => void;
+}) {
+  return (
+    <div className="absolute inset-0 z-10 flex items-end bg-black/70" onClick={onClose}>
+      <div
+        className="max-h-[60vh] w-full overflow-y-auto rounded-t-2xl border-t border-line bg-canvas p-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="mb-md text-caption font-bold uppercase tracking-[0.1em] text-ink-dim">
+          Deliveries this spell ({deliveries.length})
+        </p>
+        {deliveries.length === 0 && (
+          <p className="text-ink-dim">No deliveries captured yet.</p>
+        )}
+        {deliveries.map((d, i) => (
+          <button
+            key={d.deliveryId}
+            type="button"
+            onClick={() => onTapDelivery(d.deliveryId)}
+            className="-mx-1 flex w-[calc(100%+0.5rem)] items-center justify-between rounded-lg px-3 py-3 text-left transition-colors duration-200 hover:bg-white/6"
+          >
+            <div>
+              <p className="text-body font-medium text-ink">Delivery #{i + 1}</p>
+              <p className="text-caption text-ink-dim">
+                {d.kneeAngleDeg !== null ? `Knee: ${d.kneeAngleDeg.toFixed(1)}°` : ''}
+                {d.kneeAngleDeg !== null && d.trunkTiltDeg !== null ? ' · ' : ''}
+                {d.trunkTiltDeg !== null ? `Trunk: ${d.trunkTiltDeg.toFixed(1)}°` : ''}
+              </p>
+            </div>
+            <Badge
+              tone={
+                d.status === 'FORM_BENCHMARK'
+                  ? 'green'
+                  : d.status === 'MECHANICAL_WATCH'
+                    ? 'yellow'
+                    : d.status === 'TECHNICAL_CONCERN'
+                      ? 'red'
+                      : 'muted'
+              }
+            >
+              {d.status.replace(/_/g, ' ')}
+            </Badge>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --- Remaining components (unchanged) ---
+
 function tripodSideFor(bowlingArm: BowlingArm | null): string {
   if (bowlingArm === 'RIGHT') return "bowler's left side";
   if (bowlingArm === 'LEFT') return "bowler's right side";
   return 'bowling arm not set on this athlete — front leg side unknown';
 }
 
-/** Guided alignment overlay for CAPTURE_PLAN.md Milestone 1's PRD capture
- *  constraints: 2.8-3.2m distance and 1.1m tripod height (CoachLens_PRD.md)
- *  have no browser-sensor equivalent - there's no depth or altitude API - so
- *  those stay as a static checklist the coach confirms by eye/tape measure,
- *  same as they would with any tripod setup. Roll/pitch <3° *is* sensable
- *  via `deviceorientation`, with one caveat: the API has no reliable
- *  cross-device "phone is perfectly upright" absolute reading (unlike
- *  `expo-sensors` on native), so rather than assume beta=90/gamma=0 as the
- *  target, the coach taps "Set level" once the tripod's own bubble level (if
- *  it has one) or a visual check confirms it's level, and this tracks drift
- *  *from that baseline* rather than from an assumed absolute. Roll (gamma)
- *  is shown against an absolute 0 too, since side-to-side tilt is reliable
- *  across devices regardless of mounting pitch. */
 function AlignmentOverlay({
   bowlingArm,
   orientation,
