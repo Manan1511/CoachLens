@@ -1,31 +1,41 @@
 import type { MetricTarget } from '@/types';
 
-/** Stated as targets under test, not achieved results — the Stage 1 trial
- *  is still running. If that changes, update the intro copy with them. */
+/** No field trial running anymore — reframed around the fixed thresholds
+ *  the system actually enforces on every delivery (CoachLens_PRD.md §6.2,
+ *  §9), not a claim of external validation against a study that isn't
+ *  happening. Every number here is a real constant already live in the
+ *  scoring logic, not a target under test. */
 export const METRICS_HEADER = {
   label: 'What we hold ourselves to',
-  title: "Targets we're ",
-  titleAccent: 'testing against',
+  title: 'The thresholds behind ',
+  titleAccent: 'every verdict',
   intro:
-    "We're running a field trial with 18 bowlers, checking our numbers against frame-by-frame measurements from an accredited biomechanist. These are the bars we set before we started.",
+    "Not results from a study — these are the fixed rules the system runs every delivery through before a coach ever sees a number.",
 } as const;
 
 export const METRIC_TARGETS: MetricTarget[] = [
   {
-    target: 4.0,
-    symbol: '°',
-    label: 'Target error on front knee angle, against expert measurement',
-  },
-  { target: 3.5, symbol: '°', label: 'Target error on trunk lean at release' },
-  {
-    target: 80,
+    target: 70,
     symbol: '%',
-    label: "Agreement we want with an accredited coach's own judgement",
+    label: 'Minimum landmark confidence before a delivery is scored at all',
+  },
+  {
+    target: 3,
+    label: 'Matching deliveries out of the last 5 needed before a change is flagged',
+  },
+  {
+    target: 3.2,
+    symbol: '°',
+    label: 'Smallest deviation from personal baseline that counts as real, not noise',
+  },
+  {
+    target: 15,
+    symbol: 's',
+    label: 'Slowest a report should take to come back after upload (P95)',
   },
   {
     target: 8,
-    symbol: 's',
-    label: 'How long a delivery should take to come back after upload',
+    symbol: '%',
+    label: 'Most frame-pacing jitter allowed before a clip is rejected outright',
   },
-  { target: 18, label: 'Bowlers in the current field trial, across 150+ deliveries' },
 ];

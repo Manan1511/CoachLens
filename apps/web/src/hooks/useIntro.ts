@@ -78,6 +78,18 @@ export function useIntro({ overlay, eyebrow, brand }: IntroRefs, shouldPlay: boo
 
     const safety = setTimeout(finish, 6000);
 
+    // How much bigger the hero's wordmark renders than this one, at
+    // whatever the current viewport happens to be — both sizes are
+    // clamp()s that scale differently with viewport width, so a fixed
+    // ratio would drift at some widths. A throwaway probe element reads
+    // the real computed value instead of hard-coding one.
+    const probe = document.createElement('span');
+    probe.style.cssText = 'position:absolute;visibility:hidden;font-size:var(--text-giant);';
+    document.body.appendChild(probe);
+    const growScale =
+      parseFloat(getComputedStyle(probe).fontSize) / parseFloat(getComputedStyle(brandEl).fontSize);
+    probe.remove();
+
     const tl = gsap.timeline({
       onComplete: () => {
         clearTimeout(safety);
@@ -89,7 +101,24 @@ export function useIntro({ overlay, eyebrow, brand }: IntroRefs, shouldPlay: boo
       .to(eyebrowEl, { opacity: 0, y: -12, duration: 0.45, ease: 'power2.in' }, '+=0.5')
       .to(brandEl, { opacity: 1, y: 0, duration: 0.9, ease: 'expo.out' }, '-=0.15')
       .to(strokes, { strokeDashoffset: 0, duration: 0.55, stagger: 0.12, ease: 'power2.out' }, '-=0.55')
-      .to(overlayEl, { opacity: 0, duration: 0.7, ease: 'power2.inOut' }, '+=0.75');
+      // Grows in place to the hero wordmark's own size while the overlay
+      // fades away around it — by the time the overlay is gone, this text
+      // is already sitting at the same size/position as the (static, never
+      // separately animated) hero wordmark underneath, so it reads as one
+      // continuous piece of text arriving, not two different ones.
+      //
+      // The grow finishes *before* the fade does (0.6s inside a 0.95s
+      // fade), not at the same instant — decelerating into its final size
+      // with power2.out so it reads as settling rather than snapping still
+      // mid-motion. That gap matters: with both ending together, the last
+      // sliver of the fade was dissolving a still-moving element, which is
+      // what read as a jump/pop right at the handoff to the static hero
+      // text underneath. Finishing the grow early means nothing is moving
+      // by the time enough of the overlay has cleared to notice — the rest
+      // of the fade is a plain, smooth dissolve onto an already-settled
+      // image.
+      .to(brandEl, { scale: growScale, duration: 0.6, ease: 'power2.out' }, '+=0.7')
+      .to(overlayEl, { opacity: 0, duration: 0.95, ease: 'sine.inOut' }, '<');
 
     return () => {
       clearTimeout(safety);

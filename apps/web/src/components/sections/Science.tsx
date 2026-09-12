@@ -160,16 +160,16 @@ export function Science() {
             mean" via the same kind of thread as the curvy line above,
             instead of a boxed two-column card. */}
         <Reveal className="mx-auto max-w-[560px] text-center">
-          <div className="mb-xl flex items-center justify-center gap-2.5">
+          <div className="mb-md flex items-center justify-center gap-2.5">
             <InfoIcon className="size-4 shrink-0 text-ink-dim" />
             <span className="text-caption font-bold tracking-[0.15em] uppercase text-ink-dim">
               {TRANSPARENCY.badge}
             </span>
           </div>
 
-          <h3 className="mb-xl text-h3 font-normal">{TRANSPARENCY.title}</h3>
+          <h3 className="mb-lg text-h3 font-normal">{TRANSPARENCY.title}</h3>
 
-          <div className="mb-xl flex flex-col text-left">
+          <div className="mb-lg flex flex-col text-left">
             {TRANSPARENCY.columns.map((col, i) => (
               <div key={col.heading} className="flex gap-4">
                 <div className="flex flex-col items-center">
@@ -178,7 +178,7 @@ export function Science() {
                     <span className="my-1 w-px flex-1 bg-line" />
                   )}
                 </div>
-                <div className="pb-lg">
+                <div className="pb-sm">
                   <h4 className="mb-1 text-small tracking-[0.05em] uppercase text-ink-dim">
                     {col.heading}
                   </h4>

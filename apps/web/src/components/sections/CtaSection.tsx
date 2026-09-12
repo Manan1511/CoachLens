@@ -10,12 +10,12 @@ export function CtaSection() {
         <Reveal
           as={Link}
           to={CTA_CARD.to}
-          className="group relative flex min-h-[320px] flex-col justify-between overflow-hidden rounded-lg border border-accent bg-accent p-lg py-xl text-canvas transition-all duration-[400ms] ease-smooth hover:-translate-y-1 hover:shadow-card-hover"
+          className="group relative flex items-center justify-between gap-lg overflow-hidden rounded-lg border border-accent bg-accent px-lg py-xl text-canvas transition-all duration-[400ms] ease-smooth hover:-translate-y-1 hover:shadow-card-hover"
         >
           <h3 className="max-w-[480px] text-cta-title leading-[1.1] font-normal">
             {CTA_CARD.title}
           </h3>
-          <div className="flex size-12 items-center justify-center self-end rounded-full border-[1.5px] border-canvas transition-all duration-[400ms] ease-smooth group-hover:bg-canvas group-hover:text-accent">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-full border-[1.5px] border-canvas transition-all duration-[400ms] ease-smooth group-hover:bg-canvas group-hover:text-accent">
             <ArrowRightIcon className="size-6" />
           </div>
         </Reveal>

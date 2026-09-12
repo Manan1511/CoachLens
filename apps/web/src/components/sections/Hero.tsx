@@ -1,10 +1,8 @@
 import { useRef } from 'react';
-import { HERO } from '@/content/hero';
 import { useHeroTimeline } from '@/hooks/useHeroTimeline';
 
-/** The wordmark, dead-centre, with the bowler photo dimmed in behind it —
- *  a continuation of the intro's centred "CoachLens" rather than a
- *  headline-and-photo hero. */
+/** The wordmark, dead-centre, on a plain black canvas — a continuation of
+ *  the intro's centred "CoachLens" rather than a headline-and-photo hero. */
 export function Hero() {
   const ref = useRef<HTMLElement>(null);
   useHeroTimeline(ref);
@@ -15,25 +13,19 @@ export function Hero() {
       id="hero"
       className="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas"
     >
-      <div className="absolute inset-0">
-        <img
-          className="hero-image size-full object-cover opacity-[0.16] grayscale"
-          src={HERO.image.src}
-          alt={HERO.image.alt}
-          width={HERO.image.width}
-          height={HERO.image.height}
-          loading="eager"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-canvas/40 via-transparent to-canvas" />
-      </div>
-
-      {/* Two independently-transformable halves rather than the shared
-          Wordmark component — at rest they sit flush against each other
-          and read as one word, but useHeroTimeline splits and lifts them
-          apart on scroll (one up-and-left, one up-and-right), a curtain
-          reveal for the section behind. The split point matches Wordmark's
-          own Coach/Lens weight break, not an arbitrary letter count. */}
-      <h1 className="hero-wordmark relative z-[2] translate-y-6 text-giant leading-none tracking-[-0.03em] text-ink opacity-0">
+      {/* Static from the first frame, not faded/translated in — the intro
+          overlay's own "CoachLens" grows to this size and this exact
+          (centred) spot right before it fades away, so this wordmark reads
+          as that same text settling into place rather than a second,
+          separate one loading in behind it. See useIntro.ts's final scale
+          step. Two independently-transformable halves rather than the
+          shared Wordmark component — at rest they sit flush against each
+          other and read as one word, but useHeroTimeline splits and lifts
+          them apart on scroll (one up-and-left, one up-and-right), a
+          curtain reveal for the section behind. The split point matches
+          Wordmark's own Coach/Lens weight break, not an arbitrary letter
+          count. */}
+      <h1 className="hero-wordmark relative z-[2] text-giant leading-none tracking-[-0.03em] text-ink">
         <span className="hero-word-left inline-block whitespace-nowrap font-normal">Coach</span>
         <span className="hero-word-right inline-block whitespace-nowrap font-bold">
           <span className="intro-angle" aria-hidden>
