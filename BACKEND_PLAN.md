@@ -40,12 +40,12 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blo
 - [x] Seed script (`scripts/seed.py`): one athlete, confirmed fixed baseline, 5-delivery history designed to trigger `FORM_BENCHMARK` → `MECHANICAL_WATCH` → `TECHNICAL_CONCERN` (3-of-5) → `DATA_SUPPRESSED`. **Not yet run locally** — needs `SUPABASE_SERVICE_ROLE_KEY` in `.env`, which only the project owner can retrieve from the Supabase dashboard (Project Settings > API). Schema itself was verified end-to-end via direct SQL (enums, jsonb, FKs, cascade deletes all confirmed working).
 
 ## Milestone 3 — Measurement layer (pure functions, no ML)
-- [ ] Pacing/thermal audit: reject if frame jitter > 8% → `ERR_THERMAL_THROTTLE`
-- [ ] Quality firewall: `p_knee < 0.70` or `p_hip < 0.70` → `DATA_SUPPRESSED`
-- [ ] Zero-phase 4th-order Butterworth filter (scipy `filtfilt`) on joint coordinates
-- [ ] Multi-cue FFS detector (ankle height minima + horizontal decel + velocity zero-crossing fusion)
-- [ ] Release-frame detector
-- [ ] Unit tests with synthetic keypoint sequences (no real video needed)
+- [x] Pacing/thermal audit (`src/measurement/audit.py`): recomputes jitter from raw `t_ms` deltas rather than trusting the client-reported `capture_metadata.pacing_jitter_pct` — an audit that just trusts the self-reported number defeats its own purpose. Raises `ThermalThrottleError` (`ERR_THERMAL_THROTTLE`) above 8%.
+- [x] Quality firewall (`src/measurement/quality.py`): `passes_quality_firewall` (knee+hip, for knee-angle metric) and `passes_trunk_tilt_quality_firewall` (hip+shoulder, for trunk-tilt metric) — two gates because the two metrics depend on different landmarks.
+- [x] Zero-phase 4th-order Butterworth filter (`src/measurement/filtering.py`, scipy `filtfilt`, 6 Hz cutoff — documented placeholder pending Stage 1 calibration). Confidence values pass through unfiltered.
+- [x] Multi-cue FFS detector (`src/measurement/events.py::detect_ffs_frame`) — fuses ankle-velocity, ankle-height, and horizontal-deceleration cues with equal weights (PRD §6.1 doesn't specify weights). Returns the actual frame *number*, not list index.
+- [x] Release-frame detector (`detect_release_frame`) — see contract change below; needed a wrist landmark that didn't exist in the schema.
+- [x] Unit tests with synthetic keypoint sequences (`tests/test_measurement.py`, 11 tests) — including a mutation check (temporarily broke `detect_ffs_frame` to confirm the test actually fails on a wrong implementation, not just tautologically passes)
 
 ## Milestone 4 — Interpretation layer (pure functions)
 - [ ] Front Knee Extension angle calculation at FFS frame
@@ -88,4 +88,6 @@ Things tried and abandoned, written in plain language so we don't re-attempt the
 
 - **Status naming:** PRD markdown §6.2 code returns `UNCLASSIFIED_DEVIATION` for the isolated-deviation case; the PDF's diagrams and UI mockups use `MECHANICAL_WATCH` for the same case. We're using `MECHANICAL_WATCH` everywhere in code — it's the one that appears in the actual demo script and UI card mockups.
 - **Where pose extraction runs:** doc header says "Cloud FastAPI Batch Worker," but PRD §7.1's ingestion payload already carries `raw_keypoints`, and the PDF's Layer 1 says "MediaPipe Edge Extraction." We're going with on-device extraction — backend receives keypoints only, never video.
+- **Contract change during Milestone 3:** the PRD's §5 release event ("arm extended overhead") needs a wrist landmark to detect, but §7.1's example payload has no wrist field — only knee/hip/ankle(+shoulder, itself already an addition). Added an optional `wrist: Landmark | None` to `KeypointFrame` (`src/schemas/delivery.py`). This means the phone/frontend needs to send one more landmark; flagged to the user and confirmed before implementing rather than faking a proxy heuristic.
+- **FFS/pacing-audit weighting placeholders:** PRD §6.1's fused score has weights `w1/w2/w3` with no numeric values given (text elsewhere says "pending Stage 1 calibration"). Implemented as equal weights, explicitly documented in `events.py` as a placeholder — not a derived or tuned value. Revisit once real validation data exists (Milestone 9-equivalent in the original checklist).
 - **Folder structure vs. README:** README's `services/` lists `measurement-engine/`, `interpretation-engine/`, `coaching-api/`, `drill-library/` as if they were four separate deployables. Per the modular-monolith decision, all of that lives inside one deployable at `services/coaching-api/`, with `measurement/`, `interpretation/`, `coaching/` as internal Python packages (no network hops between them). `drill-library` is just a seeded table for now, not a service.

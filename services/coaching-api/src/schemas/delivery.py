@@ -26,6 +26,12 @@ class KeypointFrame(BaseModel):
     """Mid-shoulder point, needed for trunk-tilt at release. Optional because
     the PRD's §7.1 example payload omits it — treat frames without it as
     unusable for the trunk-tilt metric, not as malformed input."""
+    wrist: Landmark | None = None
+    """Added beyond the PRD's §7.1 example: release-frame detection ("arm
+    extended overhead") needs a wrist point, which the original payload
+    doesn't include. See BACKEND_PLAN.md's resolved-conflicts notes. Optional
+    for the same reason as shoulder — frames without it can't be used for
+    release detection, but aren't malformed."""
 
 
 class DeliveryIngestionRequest(BaseModel):

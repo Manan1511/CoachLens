@@ -343,6 +343,16 @@
                 "type": "null"
               }
             ]
+          },
+          "wrist": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Landmark"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
