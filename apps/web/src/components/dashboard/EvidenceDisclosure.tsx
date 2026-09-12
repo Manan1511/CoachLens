@@ -40,7 +40,7 @@ export function EvidenceDisclosure({
       </button>
 
       {open && (
-        <div className="mt-md grid grid-cols-2 gap-x-md gap-y-3 text-small max-mobile:grid-cols-1">
+        <div className="page-transition mt-md grid grid-cols-2 gap-x-md gap-y-3 text-small max-mobile:grid-cols-1">
           <Row label="Observed angle" value={formatDeg(kinematics.front_knee_angle_deg)} />
           <Row
             label="Confidence"

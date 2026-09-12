@@ -49,11 +49,11 @@ export function AddAthleteModal({
 
   return (
     <div
-      className="fixed inset-0 z-1000 flex items-center justify-center bg-black/80 px-4 py-6 backdrop-blur-md"
+      className="fixed inset-0 z-1000 flex items-center justify-center bg-black/80 px-4 py-6 backdrop-blur-md animate-modal-backdrop"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[28rem] rounded-2xl border border-line bg-surface p-6 shadow-2xl sm:p-7"
+        className="animate-modal-panel w-full max-w-[28rem] rounded-2xl border border-line bg-surface p-6 shadow-2xl sm:p-7"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

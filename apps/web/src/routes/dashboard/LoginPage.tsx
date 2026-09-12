@@ -110,7 +110,7 @@ export function LoginPage() {
     // without pushing a short sign-in card down far enough to need
     // scrolling itself, which defeats the point.
     <div className="flex min-h-screen items-center justify-center overflow-y-auto bg-canvas px-[var(--container-padding)] py-sm">
-      <div className="w-full max-w-[24rem]">
+      <div className="page-transition w-full max-w-[24rem]">
         <Link
           to="/"
           className="mb-md inline-block text-small text-ink-secondary hover:text-ink"

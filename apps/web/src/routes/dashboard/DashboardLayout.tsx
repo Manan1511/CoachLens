@@ -1,5 +1,6 @@
 import { Navigate, NavLink, Outlet } from 'react-router';
 import { LogoMark, Wordmark } from '@/components/icons';
+import { PageTransition } from '@/components/layout/PageTransition';
 import { useCoach } from '@/lib/auth/coach-auth';
 
 /** The dashboard shell: a floating top nav (not a sidebar) and a full-width
@@ -73,7 +74,9 @@ export function DashboardLayout() {
       {/* No max-width here — pages set their own, since the athlete page
           needs a wider three-column layout than the roster/report pages. */}
       <main className="px-md pt-24 pb-2xl sm:pt-28">
-        <Outlet />
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
       </main>
     </div>
   );

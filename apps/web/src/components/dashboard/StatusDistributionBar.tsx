@@ -47,7 +47,7 @@ export function StatusDistributionBar({
           return (
             <div
               key={status}
-              className={`${BAR_CLASS[copy.tone]} first:rounded-l-full last:rounded-r-full`}
+              className={`${BAR_CLASS[copy.tone]} first:rounded-l-full last:rounded-r-full transition-all duration-500 ease-out`}
               style={{ width: `${(count / total) * 100}%` }}
               title={`${copy.label}: ${count}`}
             />
