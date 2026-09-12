@@ -6,7 +6,7 @@ import { useApproachScroll } from '@/hooks/useApproachScroll';
 import { PoseRunningSkeleton } from '@/components/ui/PoseRunningSkeleton';
 import type { Advantage } from '@/types';
 
-const SLIDE_VH = 60;
+const SLIDE_VH = 120;
 
 /** Regroups the flattened list back into its three original pillars
  *  (Measured / Compared / Coach-led) — one pinned slide per group. */
@@ -29,7 +29,7 @@ const GROUPS = groupAdvantages(ADVANTAGES);
 function PinnedApproach() {
   const spacerRef = useRef<HTMLDivElement>(null);
   const stickyRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
+  const imageRef = useRef<HTMLDivElement>(null);
   useApproachScroll(spacerRef, stickyRef, imageRef, GROUPS.length);
 
   return (
