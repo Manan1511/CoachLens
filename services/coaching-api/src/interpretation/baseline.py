@@ -14,6 +14,11 @@ class DeviationResult:
     uncertainty_band_deg: float
     window_pattern: WindowPattern
     window_matches: int
+    trigger_deltas: list[float]
+    """The deltas actually considered for the 3-of-5 window (up to the last
+    4 history deltas plus this delivery's own), for the "Why was this
+    flagged?" transparency card (PRD §5 mockup). Empty for FORM_BENCHMARK,
+    since no window was evaluated."""
 
 
 def evaluate_delivery_deviation(
@@ -53,12 +58,12 @@ def evaluate_delivery_deviation(
             uncertainty_band_deg=uncertainty_threshold_deg,
             window_pattern=WindowPattern.NOT_APPLICABLE,
             window_matches=0,
+            trigger_deltas=[],
         )
 
     recent_deltas = rolling_history_deltas[-(ROLLING_WINDOW_SIZE - 1):] + [delta]
-    matching = sum(
-        1 for d in recent_deltas if d * delta > 0 and abs(d) > uncertainty_threshold_deg
-    )
+    matching_deltas = [d for d in recent_deltas if d * delta > 0 and abs(d) > uncertainty_threshold_deg]
+    matching = len(matching_deltas)
 
     if matching >= ROLLING_WINDOW_MATCH_THRESHOLD:
         return DeviationResult(
@@ -67,6 +72,7 @@ def evaluate_delivery_deviation(
             uncertainty_band_deg=uncertainty_threshold_deg,
             window_pattern=WindowPattern.THREE_OF_FIVE_MATCHED,
             window_matches=matching,
+            trigger_deltas=matching_deltas,
         )
 
     return DeviationResult(
@@ -75,4 +81,5 @@ def evaluate_delivery_deviation(
         uncertainty_band_deg=uncertainty_threshold_deg,
         window_pattern=WindowPattern.ISOLATED,
         window_matches=matching,
+        trigger_deltas=matching_deltas,
     )

@@ -104,6 +104,7 @@ def _score_and_persist(delivery_id: str, athlete_id: str, ffs_frame_number: int,
         event_frame=ffs_frame_number,
         observed_value_deg=knee_angle,
         confidence=kinematics.front_knee_confidence,
+        trigger_deltas=deviation.trigger_deltas or None,
     )
     proposed_action = repository.get_drill(drill_id) if drill_id else None
 
@@ -122,6 +123,7 @@ def _score_and_persist(delivery_id: str, athlete_id: str, ffs_frame_number: int,
             status=deviation.status,
             window_pattern=deviation.window_pattern,
             window_matches=deviation.window_matches,
+            trigger_context_deltas=deviation.trigger_deltas or None,
             summary=_STATUS_SUMMARIES[deviation.status],
         ),
         proposed_action=proposed_action,

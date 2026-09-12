@@ -27,6 +27,10 @@ class Verdict(BaseModel):
     status: DeliveryStatus
     window_pattern: WindowPattern
     window_matches: int = 0
+    trigger_context_deltas: list[float] | None = None
+    """The prior deltas that contributed to this verdict's window count -
+    the data behind PRD §5's "Why was this flagged?" transparency card.
+    None for FORM_BENCHMARK/DATA_SUPPRESSED, where no window was evaluated."""
     summary: str
     clinical_disclaimer: str = (
         "Non-diagnostic coaching metric. Reported athlete pain strictly voids prompts."

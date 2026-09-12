@@ -132,6 +132,7 @@ def save_verdict(
     event_frame: int | None = None,
     observed_value_deg: float | None = None,
     confidence: float | None = None,
+    trigger_deltas: list[float] | None = None,
 ) -> str:
     """Verdicts are immutable historical records (PRD Layer 3 audit trail),
     so the observed kinematics that produced this verdict (event_frame,
@@ -157,6 +158,7 @@ def save_verdict(
                 "event_frame": event_frame,
                 "observed_value_deg": observed_value_deg,
                 "confidence": confidence,
+                "trigger_deltas": trigger_deltas,
             }
         )
         .execute()
@@ -263,6 +265,7 @@ def get_report(delivery_id: str) -> CoachingReport | None:
         verdict=Verdict(
             status=status,
             window_pattern=window_pattern,
+            trigger_context_deltas=verdict_row.get("trigger_deltas"),
             window_matches=verdict_row["window_matches"],
             summary=verdict_row["summary"],
         ),

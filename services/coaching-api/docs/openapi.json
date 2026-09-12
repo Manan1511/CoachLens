@@ -789,6 +789,20 @@
             "title": "Window Matches",
             "default": 0
           },
+          "trigger_context_deltas": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger Context Deltas"
+          },
           "summary": {
             "type": "string",
             "title": "Summary"
