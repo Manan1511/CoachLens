@@ -31,14 +31,26 @@ The backend is deployed, fully persistent (Supabase Postgres), and live on Rende
 
 All backend code lives in `services/coaching-api/`.
 
-### 1. Live Webcam MediaPipe Tracker
-Test real-time bowler tracking with your camera:
+### Setup & Dependencies
 ```bash
 cd services/coaching-api
-PYTHONPATH=. .venv/Scripts/python scripts/live_webcam_tracker.py
+# Install API & interactive dev tracking dependencies (includes OpenCV and MediaPipe 0.10.14)
+pip install -r requirements-dev.txt
+```
+
+### 1. Live Webcam MediaPipe Tracker
+Test real-time bowler tracking with your camera:
+```powershell
+cd services/coaching-api
+# PowerShell:
+$env:PYTHONPATH="."
+.venv\Scripts\python scripts/live_webcam_tracker.py
+
+# Bash / macOS / Linux:
+PYTHONPATH=. .venv/bin/python scripts/live_webcam_tracker.py
 ```
 * **Controls:** Press `[SPACE]` to record a delivery stride and evaluate against the live API; press `[q]` to quit.
-* **HUD:** Displays live knee angle, trunk tilt, quality firewall status, and returned coach verdicts.
+* **HUD:** Displays live skeleton overlay, knee angle, trunk tilt, quality firewall status, and returned coach verdicts.
 
 ### 2. Automated 5-Delivery Demo Walkthrough
 Executes the validated hackathon narrative (`FORM_BENCHMARK` → `MECHANICAL_WATCH` → `MECHANICAL_WATCH` → `TECHNICAL_CONCERN` → `DATA_SUPPRESSED`) and measures P50/P95 latency against the PRD §9 SLA:
@@ -58,6 +70,9 @@ cd services/coaching-api
 ```
 *84 unit, contract, and integration tests passing.*
 
+---
+
+## Architecture & System Design
 
 The system is a decoupled tri-layer pipeline (PRD §4):
 

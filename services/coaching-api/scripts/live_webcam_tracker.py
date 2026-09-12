@@ -1,4 +1,4 @@
-﻿"""Live webcam pose tracker & CoachLens delivery evaluator.
+"""Live webcam pose tracker & CoachLens delivery evaluator.
 
 Opens your webcam, tracks bowler biomechanics in real-time via MediaPipe,
 computes live joint angles on screen, and allows recording a delivery to send
@@ -56,12 +56,17 @@ def main() -> None:
     api_url = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_API_URL
     print(f"Target CoachLens API: {api_url}")
     print("Authenticating demo coach...")
-    try:
-        token = get_demo_coach_token()
-        print("Coach authenticated successfully!")
-    except Exception as e:
-        print(f"Warning: could not get auth token ({e}), proceeding without token")
-        token = ""
+    token = ""
+    for attempt in range(1, 4):
+        try:
+            token = get_demo_coach_token()
+            print("Coach authenticated successfully!")
+            break
+        except Exception as e:
+            print(f"Auth attempt {attempt}/3 failed ({e}). Retrying in 1s...")
+            time.sleep(1.0)
+    if not token:
+        print("Warning: could not authenticate after retries. Proceeding in offline preview mode.")
 
     mp_pose = mp.solutions.pose
     mp_drawing = mp.solutions.drawing_utils
