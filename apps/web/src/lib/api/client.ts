@@ -6,6 +6,7 @@ import type {
   CoachActionResult,
   CoachActionType,
   CoachingReport,
+  SessionStartResult,
   SessionSummary,
   WhatsAppExportResult,
 } from './types';
@@ -28,6 +29,8 @@ export const api = {
   listAthletes: (): Promise<Athlete[]> => mock.listAthletes(),
 
   getAthlete: (athleteId: string): Promise<Athlete | null> => mock.getAthlete(athleteId),
+
+  startSession: (athleteId: string): Promise<SessionStartResult> => mock.startSession(athleteId),
 
   getAthleteHistory: (athleteId: string): Promise<SessionSummary[]> =>
     mock.getAthleteHistory(athleteId),

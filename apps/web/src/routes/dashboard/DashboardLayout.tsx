@@ -28,17 +28,29 @@ export function DashboardLayout() {
             </span>
           </NavLink>
 
-          <NavLink
-            to="/app"
-            end
-            className={({ isActive }) =>
-              `rounded-full px-3.5 py-1.5 text-small font-medium transition-colors duration-200 ${
-                isActive ? 'bg-white/8 text-ink' : 'text-ink-secondary hover:text-ink'
-              }`
-            }
-          >
-            Roster
-          </NavLink>
+          <div className="flex items-center gap-1">
+            <NavLink
+              to="/app"
+              end
+              className={({ isActive }) =>
+                `rounded-full px-3.5 py-1.5 text-small font-medium transition-colors duration-200 ${
+                  isActive ? 'bg-white/8 text-ink' : 'text-ink-secondary hover:text-ink'
+                }`
+              }
+            >
+              Roster
+            </NavLink>
+            <NavLink
+              to="/app/capture"
+              className={({ isActive }) =>
+                `rounded-full px-3.5 py-1.5 text-small font-medium transition-colors duration-200 ${
+                  isActive ? 'bg-white/8 text-ink' : 'text-ink-secondary hover:text-ink'
+                }`
+              }
+            >
+              Capture
+            </NavLink>
+          </div>
 
           <div className="flex shrink-0 items-center gap-3">
             <span className="hidden truncate text-small text-ink-secondary sm:inline">

@@ -6,6 +6,7 @@ import type {
   CoachActionType,
   CoachingReport,
   DeliverySummary,
+  SessionStartResult,
   SessionSummary,
   WhatsAppExportResult,
 } from '../types';
@@ -46,6 +47,28 @@ export async function listAthletes(): Promise<Athlete[]> {
 export async function getAthlete(athleteId: string): Promise<Athlete | null> {
   const row = ATHLETE_ROWS.find((a) => a.id === athleteId);
   return row ? toAthleteSummary(row) : null;
+}
+
+/** Real endpoint: POST /api/v1/athletes/{athlete_id}/sessions — get-or-create
+ *  today's session for an athlete (src/coaching/routes/athletes.py's
+ *  start_or_resume_session). Reuses an existing session for the same
+ *  athlete+date rather than creating a duplicate, exactly matching the real
+ *  repository.get_or_create_session behaviour, so a coach quick-switching
+ *  back to a bowler already recorded today gets the same session_id both
+ *  times. */
+export async function startSession(athleteId: string): Promise<SessionStartResult> {
+  const athlete = ATHLETE_ROWS.find((a) => a.id === athleteId);
+  if (!athlete) throw new Error(`No athlete found for athlete_id=${athleteId}`);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const existing = SESSIONS.find((s) => s.athlete_id === athleteId && s.session_date === today);
+  if (existing) {
+    return { session_id: existing.id, athlete_id: athleteId, session_date: today, created: false };
+  }
+
+  const session = { id: nextId('SES', SESSIONS), athlete_id: athleteId, session_date: today };
+  SESSIONS.push(session);
+  return { session_id: session.id, athlete_id: athleteId, session_date: today, created: true };
 }
 
 /** Real endpoint: GET /api/v1/athletes/{id}/history — untyped nested

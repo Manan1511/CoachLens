@@ -10,6 +10,7 @@
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "^1.0.1",
     "gsap": "^3.12.5",
     "lenis": "^1.1.18",
     "react": "^19.1.0",
