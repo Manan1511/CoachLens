@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Badge } from '@/components/ui/Badge';
 import { api } from '@/lib/api/client';
 import { useAsync } from '@/hooks/useAsync';
 import { usePoseLandmarker, POSE_LANDMARK } from '@/lib/pose/usePoseLandmarker';
 import { useSessionPool, type PoolMember } from '@/lib/pose/useSessionPool';
 import { useDeviceOrientation } from '@/lib/pose/useDeviceOrientation';
+import { useDeliveryCapture } from '@/lib/pose/useDeliveryCapture';
 import type { Athlete, BowlingArm } from '@/lib/api/types';
 
 /** CAPTURE_PLAN.md Milestone 1: session-pool setup, then a quick-select
@@ -136,9 +138,32 @@ function CaptureScreen({
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const { videoRef, videoSize, frame, cameraError, modelError, ready } = usePoseLandmarker(true);
   const orientation = useDeviceOrientation();
+  const navigate = useNavigate();
 
   const selected = pool.find((m) => m.athlete.id === selectedAthleteId) ?? pool[0];
   const rightKnee = frame?.landmarks[POSE_LANDMARK.rightKnee];
+
+  const capture = useDeliveryCapture({
+    sessionId: selected?.sessionId ?? '',
+    bowlingArm: selected?.athlete.bowling_arm ?? null,
+    frame,
+    videoSize,
+    cameraRollDeg: orientation.reading?.roll ?? null,
+  });
+
+  // Navigation is a side effect of a state transition, not something to
+  // trigger inline from the submit handler - useDeliveryCapture doesn't
+  // know about routing, and reaching 'done' via a re-render (not a direct
+  // callback) is what keeps that separation clean.
+  useEffect(() => {
+    if (capture.state.status === 'done') {
+      navigate(`/app/deliveries/${capture.state.report.delivery_id}`);
+    }
+  }, [capture.state, navigate]);
+
+  const canCapture =
+    ready && !cameraError && !modelError && !!selected?.athlete.bowling_arm &&
+    capture.state.status !== 'recording' && capture.state.status !== 'submitting';
 
   return (
     <div className="relative -mx-md -mt-24 h-screen overflow-hidden bg-canvas sm:-mt-28">
@@ -152,6 +177,37 @@ function CaptureScreen({
           CSS transforms never touch what detectForVideo reads from the
           <video> element, only the on-screen preview. */}
       <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
+
+      {/* CAPTURE_PLAN.md Milestone 3: one tap buffers CAPTURE_WINDOW_MS of
+          frames, extracts + submits them, and (via the effect above) lands
+          on the existing DeliveryReportPage for the verdict - no separate
+          verdict UI built here, since VerdictCard/NudgeFfsControl/
+          ActionBar/WhatsAppExport already exist and cover it. */}
+      <div className="absolute inset-x-0 bottom-[7.5rem] flex flex-col items-center gap-2 px-md">
+        {!selected?.athlete.bowling_arm && (
+          <p className="rounded-full bg-black/70 px-4 py-2 text-caption text-ink-dim backdrop-blur-sm">
+            Bowling arm not set for {selected?.athlete.name ?? 'this athlete'} — can't determine the front leg.
+          </p>
+        )}
+        {capture.state.status === 'error' && (
+          <p className="rounded-full bg-status-red/16 px-4 py-2 text-caption text-status-red backdrop-blur-sm">
+            {capture.state.message}
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={capture.start}
+          disabled={!canCapture}
+          className="flex items-center gap-2 rounded-full bg-status-red px-6 py-3.5 text-body font-semibold text-white shadow-glow-strong transition-opacity disabled:opacity-40"
+        >
+          <span className="size-3 rounded-full bg-white" aria-hidden />
+          {capture.state.status === 'recording'
+            ? `Capturing… ${capture.state.framesCaptured}`
+            : capture.state.status === 'submitting'
+              ? 'Sending…'
+              : 'Capture delivery'}
+        </button>
+      </div>
 
       {/* Quick-select strip: pool members only, one tap, no search - see
           CAPTURE_PLAN.md §6. Selected name rendered large enough that a
