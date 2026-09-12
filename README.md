@@ -1,6 +1,6 @@
 # CoachLens
 
-AI-assisted quantitative 2D biomechanical review assistant for fast bowling stride analysis (grassroots cricket). See [`CoachLens_PRD.md`](CoachLens_PRD.md) and [`CoachLens_PRD_System_Specification.pdf`](CoachLens_PRD_System_Specification.pdf) for the full product/technical spec: this README covers repo layout and team workflow.
+AI-assisted quantitative 2D biomechanical review assistant for fast bowling stride analysis (grassroots cricket). See [`docs/CoachLens_PRD.md`](docs/CoachLens_PRD.md) and [`docs/CoachLens_PRD_System_Specification.pdf`](docs/CoachLens_PRD_System_Specification.pdf) for the full product/technical spec: this README covers repo layout and team workflow.
 
 > CoachLens is a **quantitative coaching tool**, not a medical/injury diagnostic system. Keep that boundary in mind when naming code, fields, and UI copy (see PRD §1).
 
@@ -72,7 +72,7 @@ PYTHONPATH=. .venv/Scripts/python scripts/demo_walkthrough.py
 cd services/coaching-api
 .venv/Scripts/python -m pytest
 ```
-*114 unit, contract, and integration tests passing.*
+*127 unit, contract, and integration tests passing.*
 
 ---
 
@@ -84,61 +84,41 @@ The system is a decoupled tri-layer pipeline (PRD §4):
 2. **Interpretation Engine**: deterministic baseline triangulation, 3-of-5 rolling window flagging.
 3. **Coaching Engine**: human-in-the-loop review, drill retrieval, audit logging, export.
 
-Each layer should map to its own service/package so ML (Layer 1) stays isolated from deterministic business logic (Layers 2-3), per the "Deterministic Business Logic" invariant.
+Each layer maps to its own package inside `services/coaching-api/src/` so ML/measurement (Layer 1) stays isolated from deterministic business logic (Layers 2-3), per the "Deterministic Business Logic" invariant.
 
-## Proposed folder structure
+## Repository Folder Structure
 
 ```
 coachlens/
 ├── apps/
-│   └── web/                   # React/TS/Tailwind app: marketing site (/) + coach
-│                               # dashboard (/app/*) in one routed build (see
-│                               # DESIGN.md and apps/web/src/routes/dashboard/)
+│   └── web/                   # React frontend: marketing site (/) + coach dashboard (/app/*)
+│       ├── src/
+│       │   ├── components/    # UI components (dashboard, capture, charts, layout)
+│       │   ├── lib/           # Pose detection (MediaPipe), API client, auth
+│       │   └── routes/        # App routing (marketing, dashboard, capture)
+│       └── tests/             # Vitest test suite (24 tests)
 │
 ├── services/
-│   ├── measurement-engine/    # Layer 1: pose extraction, quality firewall, filtering, FFS detection
-│   │   ├── src/
-│   │   ├── models/            # RTMDet/RTMPose/MediaPipe weights & wrappers (not raw video)
-│   │   └── tests/
-│   ├── interpretation-engine/ # Layer 2: baseline triangulation, rolling window, angle calculators
-│   │   ├── src/
-│   │   └── tests/
-│   ├── coaching-api/          # Layer 3: FastAPI service (sessions, deliveries, reports, drills)
-│   │   ├── src/
-│   │   │   ├── routes/        # /api/v1/sessions, /api/v1/reports, ...
-│   │   │   ├── schemas/       # JSON contract models (delivery ingestion, coaching card)
-│   │   │   └── state_machine/ # DATA_SUPPRESSED / UNCLASSIFIED / TECHNICAL_CONCERN flow
-│   │   └── tests/
-│   └── drill-library/         # Credentialed S&C drill schemas (UKCC/BCCI), versioned content
+│   └── coaching-api/          # Unified Python FastAPI backend service
+│       ├── src/
+│       │   ├── coaching/      # Pipeline orchestration, repository, auth, drill selector
+│       │   ├── interpretation/# Baseline evaluation, rolling window, joint angle calculators
+│       │   ├── measurement/   # Quality firewall, Butterworth filtering, FFS event detection
+│       │   └── schemas/       # Pydantic schemas (delivery, report, status, athlete)
+│       ├── scripts/           # Demo walkthrough, webcam tracker, seed scripts
+│       ├── supabase/          # Postgres migrations and baseline seed SQL
+│       └── tests/             # Pytest suite (127 tests)
 │
-├── packages/                  # Shared libraries used across services/apps
-│   ├── contracts/             # Shared JSON schema / OpenAPI / type definitions (source of truth)
-│   └── biomech-math/          # Shared angle/vector math used by measurement + interpretation
+├── docs/                      # Product specifications, system plans, and design documentation
+│   ├── CoachLens_PRD.md       # Product Requirements Document & core invariants
+│   ├── CoachLens_PRD_System_Specification.pdf # Complete system specification
+│   ├── BACKEND_PLAN.md        # Backend architecture & milestone roadmap
+│   ├── FRONTEND_PLAN.md       # Web frontend architecture & routing plan
+│   ├── CAPTURE_PLAN.md        # Client-side 120 FPS pose capture & pipeline specification
+│   └── DESIGN.md              # Design system, typography, and visual language
 │
-├── infra/
-│   ├── docker/                # Dockerfiles per service
-│   ├── k8s/ or terraform/     # Deployment manifests (pick one, keep consistent)
-│   └── ci/                    # CI pipeline definitions (if not using root .github/workflows)
-│
-├── data/
-│   ├── baselines/             # Fixed reference baseline datasets (numerical arrays only — no video)
-│   └── validation/            # Held-out bowler validation sets for MAE/SLA testing (PRD §9)
-│
-├── docs/
-│   ├── adr/                   # Architecture Decision Records
-│   ├── runbooks/              # On-call / operational runbooks
-│   └── api/                   # Generated API docs
-│
-├── .github/
-│   ├── workflows/             # CI: lint, test, build per service
-│   └── PULL_REQUEST_TEMPLATE.md
-│
-├── CoachLens_PRD.md
-├── CoachLens_PRD_System_Specification.pdf
-└── README.md
+└── README.md                  # Project overview, setup, and developer workflow
 ```
-
-Adjust the exact tree once implementation starts, but keep the **Layer 1 / Layer 2 / Layer 3 separation** and the **shared `contracts` package** — both are load-bearing for the architecture described in the PRD.
 
 ## Collaboration conventions
 
@@ -169,4 +149,4 @@ Adjust the exact tree once implementation starts, but keep the **Layer 1 / Layer
 
 ### Documentation
 - Record any architecture-affecting decision (e.g., swapping RTMPose for MediaPipe, changing the baseline triangulation formula) as an ADR in `docs/adr/`.
-- Keep `CoachLens_PRD.md` as the single source of truth for product behavior; if implementation diverges from the PRD, update the PRD in the same PR rather than letting docs drift.
+- Keep `docs/CoachLens_PRD.md` as the single source of truth for product behavior; if implementation diverges from the PRD, update the PRD in the same PR rather than letting docs drift.
