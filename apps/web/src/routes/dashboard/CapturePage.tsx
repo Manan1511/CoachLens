@@ -2,7 +2,12 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { api } from '@/lib/api/client';
 import { useAsync } from '@/hooks/useAsync';
-import { usePoseLandmarker, POSE_LANDMARK } from '@/lib/pose/usePoseLandmarker';
+import {
+  usePoseLandmarker,
+  POSE_LANDMARK,
+  benchmarkPoseDelegates,
+  type DelegateBenchResult,
+} from '@/lib/pose/usePoseLandmarker';
 import { useSessionPool, type PoolMember } from '@/lib/pose/useSessionPool';
 import { useDeviceOrientation } from '@/lib/pose/useDeviceOrientation';
 import type { Athlete, BowlingArm } from '@/lib/api/types';
@@ -123,6 +128,7 @@ function CaptureScreen({
   const [showAddPicker, setShowAddPicker] = useState(false);
   const { videoRef, videoSize, frame, cameraError, modelError, ready } = usePoseLandmarker(true);
   const orientation = useDeviceOrientation();
+  const [bench, setBench] = useState<[DelegateBenchResult, DelegateBenchResult] | 'running' | null>(null);
 
   const selected = pool.find((m) => m.athlete.id === selectedAthleteId) ?? pool[0];
   const rightKnee = frame?.landmarks[POSE_LANDMARK.rightKnee];
@@ -187,6 +193,37 @@ function CaptureScreen({
         {!ready && !cameraError && !modelError && <DiagnosticRow label="Status" value="Loading…" />}
         {cameraError && <DiagnosticRow label="Camera error" value={cameraError} isError />}
         {modelError && <DiagnosticRow label="Model error" value={modelError} isError />}
+
+        {/* CAPTURE_PLAN.md Milestone 0.5's CPU-vs-GPU delegate comparison,
+            on-demand rather than automatic - see benchmarkPoseDelegates'
+            own comment for why. */}
+        {ready && (
+          <button
+            type="button"
+            disabled={bench === 'running'}
+            onClick={async () => {
+              setBench('running');
+              const video = videoRef.current;
+              if (!video) return;
+              setBench(await benchmarkPoseDelegates(video));
+            }}
+            className="mt-2 w-full rounded-full border border-line px-3 py-2 text-caption font-semibold text-ink disabled:opacity-40"
+          >
+            {bench === 'running' ? 'Running bench…' : 'Run CPU/GPU bench'}
+          </button>
+        )}
+        {bench && bench !== 'running' && (
+          <>
+            <DiagnosticRow
+              label="CPU delegate"
+              value={`${bench[0].avgMs.toFixed(1)}ms avg (${bench[0].minMs.toFixed(1)}–${bench[0].maxMs.toFixed(1)})`}
+            />
+            <DiagnosticRow
+              label="GPU delegate"
+              value={`${bench[1].avgMs.toFixed(1)}ms avg (${bench[1].minMs.toFixed(1)}–${bench[1].maxMs.toFixed(1)})`}
+            />
+          </>
+        )}
       </div>
 
       <AlignmentOverlay bowlingArm={selected?.athlete.bowling_arm ?? null} orientation={orientation} />
