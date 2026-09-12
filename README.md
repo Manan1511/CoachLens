@@ -70,9 +70,10 @@ Adjust the exact tree once implementation starts, but keep the **Layer 1 / Layer
 ## Collaboration conventions
 
 ### Branching & PRs
-- `main` is always deployable. Work happens on short-lived branches: `feat/<short-desc>`, `fix/<short-desc>`, `chore/<short-desc>`.
-- Open a PR early (draft is fine) so the tri-layer boundary is reviewable — flag any change that leaks ML/probabilistic logic into Layers 2–3, since deterministic auditability is a hard system invariant.
-- Use the PR template to note: which layer(s) changed, whether JSON contracts (`packages/contracts`) changed, and whether SLA/validation numbers (PRD §9) are affected.
+- Backend team works directly on `dev` — commit straight to `dev`, no feature branches or PRs for backend-only changes. Frontend and backend are separate workstreams/repos-in-practice, so there's no cross-review gate blocking either side.
+- `dev` gets merged/promoted to `main` for releases (define this cutover process once a release cadence is needed).
+- Still keep commits scoped and don't push broken/untested code to `dev` — it's the shared integration branch, not a personal scratch branch.
+- If a change is risky (schema-breaking, infra migration), give the team a heads-up before committing rather than after.
 
 ### Contracts-first workflow
 - Any change to the delivery ingestion payload or coaching card schema (PRD §7) starts in `packages/contracts`, not in an individual service. Bump a version and update all consumers in the same PR, or split into "add new field" → "migrate consumers" → "remove old field" PRs for non-trivial changes.
