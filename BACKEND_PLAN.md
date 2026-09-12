@@ -27,14 +27,17 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blo
 - [x] OpenAPI spec auto-export script (`scripts/export_openapi.py` → `docs/openapi.json`) — share this file with the frontend team, regenerate whenever schemas/routes change
 
 ## Milestone 2 — Database schema (Supabase/Postgres)
-- [ ] `athletes` (id, name, dob, guardian_consent flag — stub true for demo)
-- [ ] `sessions` (id, athlete_id, date)
-- [ ] `deliveries` (id, session_id, raw_keypoints jsonb, capture_metadata jsonb, created_at)
-- [ ] `baselines` (athlete_id, metric, fixed_median, fixed_iqr, confirmed_at)
-- [ ] `verdicts` (delivery_id, status, delta, window_matches, created_at)
-- [ ] `coach_actions` (verdict_id, action, note, created_at)
-- [ ] `drills` (id, title, prescription, contraindications, credential)
-- [ ] Seed script: one athlete, confirmed fixed baseline, delivery history producing a 3-of-5 trigger, one occluded (low-confidence) delivery
+- [x] `athletes` (id, name, dob, guardian_consent flag — stub true for demo)
+- [x] `sessions` (id, athlete_id, session_date)
+- [x] `deliveries` (id, session_id, raw_keypoints jsonb, capture_metadata jsonb, created_at)
+- [x] `baselines` (athlete_id, metric, fixed_median_deg, fixed_iqr_deg, confirmed_at) — composite PK (athlete_id, metric)
+- [x] `verdicts` (delivery_id, status, window_pattern, window_matches, delta_deg, drill_id, created_at) — `status`/`window_pattern` are Postgres enums matching `src/schemas/status.py` exactly
+- [x] `coach_actions` (verdict_id, action, note, nudge_frame_delta, created_at)
+- [x] `drills` (id, title, prescription, contraindications text[], credential)
+- [x] RLS enabled on all 7 tables with no policies (default-deny) — backend uses `service_role` exclusively, which bypasses RLS; the anon/publishable key gets zero access. Caught via `get_advisors` security check (ERROR-level `rls_disabled_in_public` before the fix).
+- [x] Fixed a related bug in `src/db/client.py`: it silently fell back to the publishable key if `service_role` was unset. Under default-deny RLS that would fail silently (empty results) instead of loudly — changed to raise `RuntimeError` at call time. Covered by `tests/test_db_client.py`.
+- [x] Migrations version-controlled at `services/coaching-api/supabase/migrations/` (pulled down from the live project via `list_migrations`, not just left in Supabase's dashboard)
+- [x] Seed script (`scripts/seed.py`): one athlete, confirmed fixed baseline, 5-delivery history designed to trigger `FORM_BENCHMARK` → `MECHANICAL_WATCH` → `TECHNICAL_CONCERN` (3-of-5) → `DATA_SUPPRESSED`. **Not yet run locally** — needs `SUPABASE_SERVICE_ROLE_KEY` in `.env`, which only the project owner can retrieve from the Supabase dashboard (Project Settings > API). Schema itself was verified end-to-end via direct SQL (enums, jsonb, FKs, cascade deletes all confirmed working).
 
 ## Milestone 3 — Measurement layer (pure functions, no ML)
 - [ ] Pacing/thermal audit: reject if frame jitter > 8% → `ERR_THERMAL_THROTTLE`
