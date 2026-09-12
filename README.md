@@ -23,6 +23,7 @@ The backend is deployed, fully persistent (Supabase Postgres), and live on Rende
 | `POST` | `/api/v1/deliveries/{delivery_id}/action` | Coach approval/dismissal audit trail with coach attribution |
 | `GET` | `/api/v1/athletes` | List athletes for roster & session-pool selection |
 | `POST` | `/api/v1/athletes` | Register a new athlete (name, bowling arm, guardian consent) |
+| `PATCH` | `/api/v1/athletes/{athlete_id}/consent` | Update adolescent guardian consent on file to unblock capture |
 | `POST` | `/api/v1/athletes/{athlete_id}/sessions` | Idempotent start/resume of today's session for an athlete |
 | `POST` | `/api/v1/athletes/{athlete_id}/baseline` | Confirm fixed reference baseline (median ± IQR) |
 | `GET` | `/api/v1/athletes/{athlete_id}/history` | Nested athlete history (`sessions` → `deliveries` → `verdicts`) |
@@ -71,7 +72,7 @@ PYTHONPATH=. .venv/Scripts/python scripts/demo_walkthrough.py
 cd services/coaching-api
 .venv/Scripts/python -m pytest
 ```
-*112 unit, contract, and integration tests passing.*
+*114 unit, contract, and integration tests passing.*
 
 ---
 
