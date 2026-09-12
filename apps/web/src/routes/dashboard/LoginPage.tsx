@@ -101,12 +101,14 @@ export function LoginPage() {
   }
 
   return (
-    // items-center still centers a card that fits; py-2xl + overflow-y-auto
-    // means a card taller than the viewport (sign-up's extra field) scrolls
-    // into view with breathing room instead of ever sitting flush against
-    // the top edge - min-h-screen alone doesn't guarantee that padding once
-    // content exceeds 100vh, since the container just grows to fit content.
-    <div className="flex min-h-screen items-center justify-center overflow-y-auto bg-canvas px-[var(--container-padding)] py-2xl">
+    // items-center still centers a card that fits; overflow-y-auto means a
+    // card taller than the viewport (sign-up's extra field) scrolls into
+    // view instead of clipping. py-sm (not the design system's 2xl, which
+    // is 9rem/144px - a marketing-section token, not a form-page one) is
+    // just enough that a scrolled card never sits flush against the edge,
+    // without pushing a short sign-in card down far enough to need
+    // scrolling itself, which defeats the point.
+    <div className="flex min-h-screen items-center justify-center overflow-y-auto bg-canvas px-[var(--container-padding)] py-sm">
       <div className="w-full max-w-[24rem]">
         <Link
           to="/"
@@ -119,7 +121,10 @@ export function LoginPage() {
           onSubmit={handleSubmit}
           className="rounded-lg border border-line bg-surface p-lg"
         >
-        <div className="mb-lg flex items-center gap-2.5">
+        {/* mb-md, not lg - lg left sign-up's extra field short of fitting a
+            typical laptop window without scroll (verified: needed ~740px on
+            a 700px-tall viewport before this pass). */}
+        <div className="mb-md flex items-center gap-2.5">
           <LogoMark className="size-6 shrink-0 text-ink" />
           <Wordmark className="font-heading text-h4 font-semibold tracking-[-0.02em] text-ink" />
         </div>
@@ -181,7 +186,7 @@ export function LoginPage() {
             row track. */}
         <div
           className={`grid transition-[grid-template-rows] duration-200 ease-out ${
-            mode === 'sign-up' ? 'mb-lg grid-rows-[1fr]' : 'grid-rows-[0fr]'
+            mode === 'sign-up' ? 'mb-md grid-rows-[1fr]' : 'grid-rows-[0fr]'
           }`}
         >
           <div className="min-h-0 overflow-hidden">
