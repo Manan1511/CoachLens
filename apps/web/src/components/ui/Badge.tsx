@@ -1,11 +1,15 @@
 import type { ReactNode } from 'react';
 
-type Tone = 'accent' | 'green' | 'yellow';
+type Tone = 'accent' | 'green' | 'yellow' | 'red' | 'muted';
 
 const TONES: Record<Tone, string> = {
   accent: 'bg-white/6 text-ink border-white/16',
   green: 'bg-status-green/10 text-status-green border-status-green/22',
   yellow: 'bg-status-yellow/10 text-status-yellow border-status-yellow/22',
+  /** Added for the dashboard's fourth and fifth verdict states — the
+   *  marketing site's status-panel mockup only ever needed green/yellow. */
+  red: 'bg-status-red/10 text-status-red border-status-red/22',
+  muted: 'bg-white/4 text-ink-dim border-line',
 };
 
 export function Badge({

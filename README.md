@@ -87,8 +87,9 @@ Each layer should map to its own service/package so ML (Layer 1) stays isolated 
 ```
 coachlens/
 ├── apps/
-│   ├── mobile/                # Capture app (Android/iOS) — stencil overlay, recording, upload
-│   └── coach-dashboard/       # Web app for coach review, approve/dismiss, drill assignment
+│   └── web/                   # React/TS/Tailwind app: marketing site (/) + coach
+│                               # dashboard (/app/*) in one routed build — see
+│                               # DESIGN.md and apps/web/src/routes/dashboard/
 │
 ├── services/
 │   ├── measurement-engine/    # Layer 1: pose extraction, quality firewall, filtering, FFS detection

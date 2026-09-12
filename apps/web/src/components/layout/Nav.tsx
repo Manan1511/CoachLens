@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router';
 import { LogoMark } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { NAV_LINKS } from '@/content/nav';
@@ -64,6 +65,13 @@ export function Nav() {
           </div>
 
           <div className="flex items-center gap-4">
+            <Link
+              to="/app"
+              className="whitespace-nowrap text-small font-medium text-ink-secondary transition-colors duration-200 hover:text-ink max-tablet:hidden"
+            >
+              Coach sign in
+            </Link>
+
             <Button
               href="#cta"
               arrow
