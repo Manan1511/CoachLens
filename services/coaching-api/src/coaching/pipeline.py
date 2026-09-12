@@ -26,6 +26,7 @@ _STATUS_SUMMARIES = {
     DeliveryStatus.MECHANICAL_WATCH: "Isolated deviation flagged for replay review.",
     DeliveryStatus.TECHNICAL_CONCERN: "Persistent deviation from baseline mechanics detected.",
     DeliveryStatus.DATA_SUPPRESSED: "Landmark visibility below threshold at the FFS frame.",
+    DeliveryStatus.BENCHMARK_PENDING: "Measured, not yet scored - no confirmed baseline for this athlete.",
 }
 
 # Only assigned when a delivery is flagged TECHNICAL_CONCERN for the knee
@@ -33,10 +34,6 @@ _STATUS_SUMMARIES = {
 # is out of scope for Stage 1 - this is the one seeded drill (see
 # scripts/seed.py) matching the PRD §7.2 example.
 TECHNICAL_CONCERN_DRILL_ID = "DRL-SNC-012"
-
-
-class UnknownBaselineError(Exception):
-    """Raised when the athlete has no confirmed baseline for this metric yet."""
 
 
 class ConsentRequiredError(Exception):
@@ -116,11 +113,11 @@ def _score(
 ) -> _Scored:
     """Pure decision logic: quality firewall -> angle -> baseline lookup ->
     interpretation. Only reads from the repository (get_baseline,
-    get_rolling_history_deltas) - never writes. May raise
-    UnknownBaselineError.
+    get_rolling_history_deltas) - never writes.
 
     Kept separate from persistence specifically so evaluate_delivery can
-    call this *before* writing the delivery row: if this raises, nothing
+    call this *before* writing the delivery row: if this raises (currently
+    only possible for reasons outside this function, e.g. consent), nothing
     has been persisted, avoiding an orphaned delivery with no verdict.
     """
     trunk_tilt, trunk_tilt_conf = _compute_trunk_tilt(all_frames, ffs_frame)
@@ -150,9 +147,25 @@ def _score(
 
     baseline = repository.get_baseline(athlete_id, FRONT_KNEE_METRIC)
     if baseline is None:
-        raise UnknownBaselineError(
-            f"Athlete {athlete_id!r} has no confirmed {FRONT_KNEE_METRIC} baseline. "
-            f"Confirm one via POST /api/v1/athletes/{{athlete_id}}/baseline first."
+        # No confirmed baseline yet - measure and persist (BENCHMARK_PENDING)
+        # rather than reject the whole delivery. A baseline is itself
+        # computed from 8-10 of these benchmark deliveries (PRD §4 Layer 2),
+        # so refusing to store any of them until one already exists was a
+        # chicken-and-egg that left every new athlete permanently stuck:
+        # the only thing that *did* persist without a baseline was
+        # DATA_SUPPRESSED (the quality firewall short-circuits earlier),
+        # so a new athlete's unusable deliveries were kept and usable ones
+        # discarded. See BACKEND_PLAN.md's "Known gaps" entry.
+        return _Scored(
+            kinematics=kinematics,
+            verdict=Verdict(
+                status=DeliveryStatus.BENCHMARK_PENDING,
+                window_pattern=WindowPattern.NOT_APPLICABLE,
+                summary=_STATUS_SUMMARIES[DeliveryStatus.BENCHMARK_PENDING],
+            ),
+            baselines=Baselines(),
+            drill_id=None,
+            trigger_deltas=None,
         )
 
     history = repository.get_rolling_history_deltas(athlete_id, FRONT_KNEE_METRIC)
@@ -252,11 +265,11 @@ def evaluate_delivery(request: DeliveryIngestionRequest) -> CoachingReport:
     ffs_frame_number = detect_ffs_frame(filtered_frames)
     ffs_frame = next(f for f in filtered_frames if f.frame == ffs_frame_number)
 
-    # Score before persisting anything: if the athlete has no baseline yet,
-    # this raises UnknownBaselineError here, before the delivery row (or a
-    # verdict, which has a hard FK dependency on it) is ever written -
-    # avoiding an orphaned delivery with no verdict and a misleading 404 on
-    # a later GET /reports/{id}.
+    # Score before persisting anything: if this raises (e.g. a downstream
+    # data error), nothing has been persisted, avoiding an orphaned delivery
+    # with no verdict and a misleading 404 on a later GET /reports/{id}. A
+    # missing baseline no longer raises here - see _score's BENCHMARK_PENDING
+    # branch.
     scored = _score(athlete_id, ffs_frame_number, ffs_frame, was_filtered, filtered_frames)
 
     repository.save_delivery(request)

@@ -7,6 +7,7 @@ Postgres or real network access.
 import uuid
 from dataclasses import dataclass
 from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from src.coaching.consent import is_consent_blocked
 from src.db.client import get_supabase
@@ -25,6 +26,13 @@ fewer than 4 valid deliveries across their most recent 20 sessions would see
 a shorter window than intended. A schema change adding athlete_id directly
 to deliveries/verdicts would remove the need for this bound entirely, but
 that's a bigger change than fixing the immediate unbounded-scan cost."""
+
+SESSION_TIMEZONE = ZoneInfo("Asia/Kolkata")
+"""get_or_create_session's default date must reflect the coach's actual
+calendar day, not the server's. Render runs UTC - without this, a session
+starting between 00:00 and 05:30 IST would be dated to the previous UTC
+day, quietly splitting one nets outing across two session rows (and two
+sets of "today's session" lookups for the same real session)."""
 
 
 @dataclass
@@ -336,7 +344,7 @@ def get_or_create_session(athlete_id: str, session_date: date | None = None) -> 
     if not db.table("athletes").select("id").eq("id", athlete_id).limit(1).execute().data:
         raise NotFoundError(f"No athlete found for athlete_id={athlete_id!r}")
 
-    target_date = session_date or date.today()
+    target_date = session_date or datetime.now(SESSION_TIMEZONE).date()
     existing = (
         db.table("sessions")
         .select("id")

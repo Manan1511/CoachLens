@@ -12,6 +12,14 @@ class DeliveryStatus(StrEnum):
     FORM_BENCHMARK = "FORM_BENCHMARK"
     MECHANICAL_WATCH = "MECHANICAL_WATCH"
     TECHNICAL_CONCERN = "TECHNICAL_CONCERN"
+    BENCHMARK_PENDING = "BENCHMARK_PENDING"
+    """Measured, not compared: the delivery passed the quality firewall and
+    has a real observed angle, but the athlete has no confirmed baseline yet
+    to score it against. Persisted like any other verdict (unlike the old
+    behaviour of rejecting the whole delivery with a 422) specifically so
+    these observations accumulate and a coach can compute a baseline from
+    them - see BACKEND_PLAN.md's "Known gaps" entry on the baseline
+    chicken-and-egg this replaces."""
 
 
 class WindowPattern(StrEnum):

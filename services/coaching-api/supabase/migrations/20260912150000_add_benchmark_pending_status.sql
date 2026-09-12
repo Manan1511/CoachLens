@@ -1,0 +1,14 @@
+-- Delivery ingestion used to reject any delivery from an athlete with no
+-- confirmed baseline (raising UnknownBaselineError -> 422), before the
+-- delivery row was ever persisted. But a baseline is itself computed from
+-- 8-10 of these benchmark deliveries (PRD §4 Layer 2) - so the system
+-- required a baseline to accept a delivery, and required accepted
+-- deliveries to compute a baseline. Worse, the one status that *did*
+-- persist without a baseline was DATA_SUPPRESSED (the quality firewall
+-- short-circuits earlier), so a brand-new athlete's unusable deliveries
+-- were kept and usable ones discarded.
+--
+-- BENCHMARK_PENDING is measured and persisted like any other verdict, just
+-- not scored against a baseline that doesn't exist yet - see
+-- pipeline._score and BACKEND_PLAN.md's "Known gaps" entry.
+alter type delivery_status add value 'BENCHMARK_PENDING';

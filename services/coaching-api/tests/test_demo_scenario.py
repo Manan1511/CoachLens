@@ -154,3 +154,32 @@ def test_demo_scenario_via_real_http_routes(monkeypatch):
             assert len(report["verdict"]["trigger_context_deltas"]) == report["verdict"]["window_matches"]
         elif demo.expected_status in ("FORM_BENCHMARK", "DATA_SUPPRESSED"):
             assert report["verdict"]["trigger_context_deltas"] is None
+
+
+def test_delivery_persists_as_benchmark_pending_when_athlete_has_no_baseline(monkeypatch):
+    """Same real route -> pipeline -> repository stack, but for a brand-new
+    athlete with no confirmed baseline yet - the state every newly created
+    athlete starts in (BACKEND_PLAN.md's "Known gaps" entry). Must come back
+    200 BENCHMARK_PENDING with the delivery actually persisted, not a 422
+    that leaves nothing stored for a baseline to ever be computed from.
+    """
+    fake = FakeRepository()
+    monkeypatch.setattr(repository, "get_athlete_id_for_session", fake.get_athlete_id_for_session)
+    monkeypatch.setattr(repository, "get_baseline", fake.get_baseline)  # no baseline confirmed
+    monkeypatch.setattr(repository, "get_rolling_history_deltas", fake.get_rolling_history_deltas)
+    monkeypatch.setattr(repository, "save_delivery", fake.save_delivery)
+    monkeypatch.setattr(repository, "save_verdict", fake.save_verdict)
+    monkeypatch.setattr(repository, "get_drill", fake.get_drill)
+    monkeypatch.setattr(repository, "get_athlete_consent_info", fake.get_athlete_consent_info)
+
+    client = TestClient(app)
+    payload = build_delivery_payload(DEMO_DELIVERIES[0])  # a FORM_BENCHMARK-quality delivery
+    response = client.post("/api/v1/sessions/delivery", json=payload)
+
+    assert response.status_code == 200, response.text
+    report = response.json()
+    assert report["verdict"]["status"] == "BENCHMARK_PENDING"
+    assert report["kinematics"]["front_knee_angle_deg"] is not None  # measured
+    assert report["baselines"]["fixed_reference_median_deg"] is None  # nothing to score against
+    assert fake.deliveries  # persisted, unlike the old raise-before-save behaviour
+    assert fake.verdicts_by_delivery

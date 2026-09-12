@@ -73,7 +73,7 @@ Deliberately few. The app is **one working screen** plus what leads into and out
 4. **Capture — the one working screen.** Live preview, alignment overlay, achieved-fps/format readout, record control, and a **quick-select strip of the session pool**: whoever is about to bowl taps their name, then bowls. Pool members only — no search, no scrolling, no roster. The selected name is large enough that a wrong pick is obvious *before* the delivery, not after.
 5. **Verdict** — after each delivery: status, observed angle, delta vs baseline, "why was this flagged?" disclosure (`trigger_context_deltas`), the proposed drill text when present (`TECHNICAL_CONCERN` only), the non-diagnostic disclaimer, and Nudge FFS ±1. **Read-only otherwise — no approve/dismiss (§6).**
 6. **Reshoot prompt** — the `DATA_SUPPRESSED` path. Not an error dialog: a specific, actionable "the camera couldn't see the bowler clearly — here's what to fix" screen.
-7. **Benchmark-collection state** — what a bowler with no confirmed baseline sees. Currently this is an unavoidable dead end, and it is the sharpest unresolved issue in the plan (§10.4).
+7. **Benchmark-collection state** — what a bowler with no confirmed baseline sees. **Backend fixed 2026-09-12** (`BACKEND_PLAN.md` Milestone 10): these deliveries are now measured and persisted (`BENCHMARK_PENDING`), not rejected. What remains open is presenting that state honestly on-screen rather than as a raw status string (§10.4).
 
 No player-registration screen: players come from the dashboard (§2). The app reads the roster, it never writes to it.
 
@@ -107,15 +107,13 @@ The app produces `raw_keypoints` + `capture_metadata` matching `services/coachin
 
 ### `capture_metadata` — the app is the only enforcement point
 
-All six fields are required by the schema: `fps`, `pacing_jitter_pct`, `shutter_speed_sec`, `distance_meters`, `tripod_height_meters`, `camera_roll_deg`.
+Five of six fields are required by the schema: `fps`, `pacing_jitter_pct`, `distance_meters`, `tripod_height_meters`, `camera_roll_deg`. `shutter_speed_sec` is now `float | None` (fixed 2026-09-12, `BACKEND_PLAN.md` Milestone 10) — send the real exposure duration if the platform surfaces it, `null` otherwise, never a fabricated number.
 
 **None of them is read by any backend decision logic.** They're persisted into the `capture_metadata` jsonb and never consulted — `measurement/audit.py` explicitly measures pacing from frame timestamps "rather than trusting a self-reported" value. So the PRD's capture constraints (2.8–3.2m, 1.1m tripod height, roll <3°, shutter ≤1/1000s) are **recorded provenance, not enforced constraints**, anywhere in the system.
 
 That reframes the guided-setup overlay from a nicety into the *only* place those constraints are enforced at all. If the app doesn't hold the line on them, nothing does — and every downstream number silently inherits whatever geometry the coach happened to set up.
 
-Two consequences worth being honest about:
-- `distance_meters` and `tripod_height_meters` are not measurable by the phone. They're coach-entered or eyeballed against the stencil, and should be presented as *claims* rather than measurements.
-- `shutter_speed_sec` may be genuinely unknowable on this stack (§1). Writing a fabricated `0.001` into a permanent audit record — as `scripts/demo_fixtures.py` does for its synthetic fixtures — would be inventing provenance. Prefer reporting the real exposure duration if the platform surfaces it; otherwise the field should become `float | None` so "unknown" is expressible (§10, recommended backend change).
+One consequence worth being honest about: `distance_meters` and `tripod_height_meters` are not measurable by the phone. They're coach-entered or eyeballed against the stencil, and should be presented as *claims* rather than measurements.
 
 ## 8. Architecture: capture first, extract second
 
@@ -166,7 +164,8 @@ The riskiest assumptions in the plan, proven or disproven before UI is built on 
 - [ ] `POST /api/v1/sessions/delivery` with the Supabase JWT attached
 - [ ] Verdict card rendering all four statuses, with the "why was this flagged?" disclosure
 - [ ] Nudge FFS ±1 (`POST /api/v1/deliveries/{id}/nudge-ffs`). **Not** `/action` — approve/dismiss is dashboard-only (§6)
-- [ ] Error mapping: 403 `ERR_CONSENT_REQUIRED`, 422 `ERR_UNKNOWN_BASELINE` (the default state of every new bowler — see §10.4), 422 `ERR_THERMAL_THROTTLE`, 401 (re-auth), 404 (unknown session)
+- [ ] **`BENCHMARK_PENDING` verdict card** — the state every new bowler starts in (§10.4), no longer an error to map. Needs its own honest presentation ("still collecting data for a baseline"), not a generic verdict card with empty baseline fields
+- [ ] Error mapping: 403 `ERR_CONSENT_REQUIRED`, 422 `ERR_THERMAL_THROTTLE`, 401 (re-auth), 404 (unknown session)
 
 ### Milestone 4 — Field resilience
 - [ ] **Offline queue.** Nets have poor connectivity; keypoint payloads are small JSON (tens of KB), so queue-and-retry is cheap and high-value. A delivery captured out of signal must not be lost
@@ -180,16 +179,15 @@ The riskiest assumptions in the plan, proven or disproven before UI is built on 
 
 ## 10. Dependencies and open decisions
 
-### 10.1 Backend — done (`BACKEND_PLAN.md` Milestone 9)
+### 10.1 Backend — done (`BACKEND_PLAN.md` Milestones 9–10)
 - [x] **`GET /api/v1/athletes`** — name-ordered roster for pool selection, returning `bowling_arm` and `consent_blocked`. Omits `dob` by design: read on a shared net-side phone
 - [x] **`POST /api/v1/athletes`** — registration for the dashboard, `bowling_arm` required
 - [x] **`bowling_arm` on `athletes`** — migration applied, nullable only for legacy rows
 - [x] Mid-session join needed nothing new — `POST /athletes/{id}/sessions` is get-or-create
+- [x] **Baseline chicken-and-egg fixed** — `BENCHMARK_PENDING` status added, `_score` measures and persists instead of raising. See §10.4
+- [x] **`shutter_speed_sec` → `float | None`** — "unknown" is now expressible instead of fabricated
+- [x] **Session date now uses `Asia/Kolkata`**, not the server's UTC — a coach training in the small hours of IST no longer risks one nets outing splitting across two session rows
 - Caveat: the roster is **not** scoped per coach (no ownership column on `athletes`), so every coach sees every athlete. Fine for one club; flagged in `BACKEND_PLAN.md` Milestone 9
-
-**Two small backend changes this review recommends** (neither blocking):
-- `shutter_speed_sec` → `float | None`, so "unknown" is expressible instead of fabricated (§7)
-- Session date is derived server-side from `date.today()` in the server's timezone (UTC on Render). A coach training between 00:00 and 05:30 IST would get a session dated to the previous UTC day, quietly splitting one nets session in two. Unusual hours, small fix, worth knowing before someone debugs it at a tournament
 
 ### 10.2 Dashboard — the sharp edge
 Players are created in the dashboard with `bowling_arm`, `dob` and `guardian_consent`. **The dashboard does not exist.** `apps/web/src/routes/DashboardPlaceholder.tsx` renders "Not built yet" and talks to no API; `FRONTEND_PLAN.md`'s Milestone 7 ("Dashboard starts as its own app") is unstarted. So today there is no way to create a player this app can use, and `dob`/`guardian_consent` matter directly — the consent gate 403s unconsented minors and this app has no screen to resolve that.
@@ -199,19 +197,14 @@ For the demo, one of: extend `scripts/seed.py` to create the pool (cheapest), bu
 ### 10.3 Orientation — resolved: landscape, locked, app-wide
 Capture must be landscape: the analysis is a side-on sagittal view, the stride is lateral movement across the frame, and high-fps formats are natively 16:9. The deciding argument isn't aesthetic though — **the phone is physically clamped to a tripod.** Nobody unmounts and re-clamps it to read a verdict. Per-screen orientation would be a rotation the hardware can't perform, so one lock for the whole app, and every screen designed for a wide, short viewport.
 
-### 10.4 First-run baseline — a genuine chicken-and-egg, unresolved
-This is the most serious finding of this review, and it is a **product-blocking gap in the backend, not a mobile UI question**.
+### 10.4 First-run baseline — backend fixed 2026-09-12, app work remains
 
-- `pipeline._score` raises `UnknownBaselineError` when an athlete has no confirmed baseline, and it raises *before* `save_delivery` — by design, so no orphaned delivery rows are left behind.
-- A baseline is meant to be computed from **8–10 benchmark deliveries** (PRD §4 Layer 2; `POST /athletes/{id}/baseline`'s own docstring says computing the numbers from a batch of deliveries is a coach/UI workflow step, not something the endpoint does).
-- **So: you need deliveries to produce a baseline, and a baseline to ingest deliveries.** There is currently no API path that stores a good-quality delivery for a baseline-less athlete. The only thing that *does* persist without a baseline is a `DATA_SUPPRESSED` one, because the quality firewall short-circuits before the baseline lookup — meaning the system keeps unusable deliveries and discards usable ones for a new bowler.
+The chicken-and-egg is gone: `pipeline._score` used to raise `UnknownBaselineError` before `save_delivery` for any athlete with no confirmed baseline, but a baseline is itself computed from 8–10 benchmark deliveries (PRD §4 Layer 2) — so no athlete could ever earn their first baseline through the API. Fixed in `BACKEND_PLAN.md` Milestone 10: a delivery from a baseline-less athlete is now measured and persisted as `DeliveryStatus.BENCHMARK_PENDING` — real kinematics, real confidence, real event frame, just no score against a baseline that doesn't exist yet. Verified end-to-end against the live database and the live Postgres enum.
 
-Every newly created player starts in this state, so this is the first thing a real coach would hit. Options:
-- **(a)** A benchmark-collection path: ingest, measure and persist kinematics without scoring, for athletes with no baseline. Needs a way to express "measured, not compared" — a new status, or a nullable verdict.
-- **(b)** `POST /athletes/{id}/baseline` already accepts `median_deg`/`iqr_deg` directly, so a coach *can* type numbers in — but there's no supported way to obtain them, so this legitimises a guess.
-- **(c)** Demo-only: pre-seed baselines (what `scripts/seed.py` does today). Unblocks a demo; doesn't solve onboarding.
-
-**For the demo, (c).** For the product, (a) is the real answer and should be its own backend milestone. Until then the app needs an honest screen for a state it cannot fix — hence the benchmark-collection state, §5 screen 7 — rather than surfacing a raw 422.
+**What this app still needs to do, now that the data exists to do it:**
+- Render `BENCHMARK_PENDING` as its own honest state (§5 screen 7, §9 Milestone 3) — "measured, still collecting a baseline" is not an error and should not look like one
+- Nothing yet *aggregates* a batch of `BENCHMARK_PENDING` deliveries into a confirmed baseline (median + IQR) and calls `POST /athletes/{id}/baseline` — that computation is a dashboard job, still unbuilt, and this app has no baseline-confirmation screen by design (§2)
+- Demo path unaffected: `scripts/seed.py` still pre-seeds a confirmed baseline directly, which remains the fastest way to get a *scored* demo narrative rather than a `BENCHMARK_PENDING` one
 
 ## Dead End Registry
 
@@ -222,3 +215,4 @@ Every newly created player starts in this state, so this is the first thing a re
 - **Web-only vs. native** (decided 2026-09-12): `FRONTEND_PLAN.md` frames CoachLens as web-only with nothing to install. Reversed for **capture specifically**. The load-bearing reason is on-device extraction and PRD §10's ephemeral-video invariant, plus native-only high frame rates — *not* shutter control, which the chosen library doesn't expose either (§1). The marketing site stays a web app; only delivery capture moves native.
 - **Design system scope**: `DESIGN.md` is the web site's language. §4 is the authority for what applies on mobile, including the deliberate contrast-ramp deviation for outdoor use.
 - **Real-time vs. buffered extraction**: frame-processor inference at capture rate was the assumed approach and is rejected — BlazePose can't sustain 120fps, and dropped frames near front-foot contact are the costliest ones to lose. Buffered capture-then-extract instead (§8).
+- **Baseline chicken-and-egg** (fixed 2026-09-12, `BACKEND_PLAN.md` Milestone 10): rejecting every delivery from a baseline-less athlete meant no athlete could ever produce the batch of benchmark deliveries a baseline is computed from. Fixed with a new `BENCHMARK_PENDING` status — measure and persist, don't reject. See §10.4.

@@ -14,6 +14,7 @@ EMOJI_WARNING = "⚠️"
 EMOJI_STOP = "🚫"
 EMOJI_ANGLE = "📐"
 EMOJI_DRILL = "🏋️"
+EMOJI_PENDING = "📊"
 CLINICAL_DISCLAIMER_PREFIX = "Note"
 
 
@@ -30,7 +31,12 @@ def format_whatsapp_card(report: CoachingReport) -> str:
             f"• {report.verdict.summary}",
         ])
     else:
-        status_icon = EMOJI_CHECK if status == DeliveryStatus.FORM_BENCHMARK else EMOJI_WARNING
+        if status == DeliveryStatus.FORM_BENCHMARK:
+            status_icon = EMOJI_CHECK
+        elif status == DeliveryStatus.BENCHMARK_PENDING:
+            status_icon = EMOJI_PENDING
+        else:
+            status_icon = EMOJI_WARNING
         status_display = status.value.replace("_", " ")
         lines.append(f"*Status:* {status_icon} *{status_display}*")
         lines.append(f"• {report.verdict.summary}")

@@ -4,7 +4,15 @@ from pydantic import BaseModel, Field
 class CaptureMetadata(BaseModel):
     fps: int
     pacing_jitter_pct: float
-    shutter_speed_sec: float
+    shutter_speed_sec: float | None = None
+    """Nullable because a capture client may have no way to read the actual
+    exposure duration (e.g. react-native-vision-camera exposes only EV bias,
+    not shutter speed - see MOBILE_PLAN.md §1/§3). None must mean "unknown",
+    not a fabricated number: this is persisted verbatim as an audit record
+    and never read by any backend decision (see measurement/audit.py, which
+    deliberately measures pacing from frame timestamps rather than trusting
+    self-reported metadata) - inventing a value here would misrepresent
+    provenance without changing any outcome."""
     distance_meters: float
     tripod_height_meters: float
     camera_roll_deg: float
