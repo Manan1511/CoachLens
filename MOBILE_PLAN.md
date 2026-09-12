@@ -14,8 +14,8 @@ The PRD's capture-quality targets — shutter ≤1/1000s, 60/120fps, on-device p
 
 This app **captures deliveries**. That's it:
 
-- Guided camera setup, record, on-device pose extraction, post keypoints, show the returned verdict, let the coach nudge the FFS frame or approve/dismiss the drill.
-- It is **not** the coach dashboard. No longitudinal history views, no drill library browsing, no baseline-computation workflow, no athlete admin beyond picking who's bowling. Those stay web (separate workstream).
+- Guided camera setup, record, on-device pose extraction, post keypoints, show the returned verdict, and let the FFS frame be nudged if the app picked the wrong contact frame.
+- It is **not** the coach dashboard. **Drill approve/dismiss lives in the dashboard, not here** — along with longitudinal history, drill library browsing, baseline-confirmation workflow, and athlete admin beyond picking who's bowling. Those stay web (separate workstream).
 - The backend contract does not change for this app. It is a new consumer of endpoints `services/coaching-api` already exposes.
 
 ## 3. Stack
@@ -26,7 +26,7 @@ This app **captures deliveries**. That's it:
 | Build | **EAS Build** (cloud). This machine has no Android Studio/SDK/JDK17, so local Gradle builds aren't possible; only `adb` + a physical device are needed to install |
 | Platform | **Android first.** iOS needs a Mac/Xcode regardless of framework — deferred, not abandoned |
 | Camera | `react-native-vision-camera` v4 (frame processors, format selection for fps/resolution) |
-| Pose | MediaPipe Pose Landmarker (BlazePose, 33 landmarks) via a Vision Camera frame-processor plugin — see the §7 spike, this is the project's biggest unverified assumption |
+| Pose | MediaPipe Pose Landmarker (BlazePose, 33 landmarks) via a Vision Camera frame-processor plugin — see the §8 spike, this is the project's biggest unverified assumption |
 | Animation | `react-native-reanimated` — **not** GSAP/Lenis (web-only; see §4) |
 | Auth | `@supabase/supabase-js` with `expo-secure-store` for refresh-token persistence |
 | Fonts | Inter via `@expo-google-fonts/inter` |
@@ -49,7 +49,7 @@ Expo's own template ships `AGENTS.md` telling contributors to read the versioned
 - **Motion stack.** GSAP + Lenis + ScrollTrigger are web-only. Reanimated instead. Every scroll-driven pattern in DESIGN.md §3 (pinned accumulation, scroll-scrubbed word highlight, the semicircular step arc, draw-on stroke) is a *marketing narrative device* — a capture tool has no scroll narrative. Dropped, not ported.
 - **Imagery rules (DESIGN.md §5).** The live camera preview is neither "dimmed grayscale texture behind type" nor "a contrast diagram" — it's the primary interactive surface at full brightness, and its brightness is uncontrollable (it's the real world). Overlays drawn on top of it therefore need their own legibility treatment (scrim behind text, stroked skeleton lines), which the web palette never had to solve.
 - **The dim/muted text ramp.** This is the important one. DESIGN.md sets `ink-dim` at 44% white and `ink-muted` at 20% white, and `FRONTEND_PLAN.md` *already* flags 44% as "borderline for small text" — indoors, on a desk. This app is used **outdoors in daylight at a cricket net**. 20% white on black will be invisible in sun. The app raises the floor of that ramp (proposal: dim ≥ 60%, muted ≥ 35%) and treats it as a documented deviation rather than a violation. Verify on a real phone in real sunlight, not in a simulator.
-- **Two-breakpoint responsive system.** Irrelevant; replaced by safe-area handling and an orientation decision (§9).
+- **Two-breakpoint responsive system.** Irrelevant; replaced by safe-area handling and an orientation decision (§10).
 
 ### Mobile-only additions
 - **Status is never encoded by colour alone** — always colour + text label + a distinct shape/icon. Sunlight washes out hue, and the green/yellow/red set is the worst case for red-green colour blindness.
@@ -58,22 +58,36 @@ Expo's own template ships `AGENTS.md` telling contributors to read the versioned
 
 ## 5. Screens
 
-1. **Launch** — centred wordmark moment, then straight into auth check.
-2. **Sign in** — Supabase Auth email/password. Token persisted; this screen should be seen once per device, not per session.
-3. **Bowler select** — list of athletes, search, "add bowler", and the *current* bowler shown prominently. On selection, `POST /api/v1/athletes/{id}/sessions` → hold the returned `session_id`.
-4. **Capture** — live preview, alignment overlay, achieved-fps/format readout, record control, and a **persistent current-bowler chip that is always visible and always tappable to switch** (never a buried setting).
-5. **Verdict** — the coaching card: status, observed angle, delta vs baseline, "why was this flagged?" disclosure (`trigger_context_deltas`), the proposed drill when present (`TECHNICAL_CONCERN` only), the non-diagnostic disclaimer, and controls for Nudge FFS ±1 and approve/dismiss.
-6. **Reshoot prompt** — the `DATA_SUPPRESSED` path. Not an error dialog: a specific, actionable "the camera couldn't see the bowler clearly — here's what to fix" screen.
+Deliberately few. The app is **one working screen** plus the things that lead into it and out of it.
 
-## 6. Data contract — two real gotchas
+1. **Launch** — centred wordmark moment, then straight into auth check.
+2. **Sign in** — Supabase Auth email/password. Token persisted; seen once per device, not once per session.
+3. **Capture — the one screen.** Live preview, alignment overlay, achieved-fps/format readout, record control, and the **bowler selector right on it**: whoever is about to bowl taps their name, then bowls. Not a separate step, not a settings screen, not a wizard. The selected name is displayed large enough that a wrong selection is obvious *before* the delivery, not after.
+4. **Verdict** — shown after each delivery: status, observed angle, delta vs baseline, "why was this flagged?" disclosure (`trigger_context_deltas`), the proposed drill text when present (`TECHNICAL_CONCERN` only), the non-diagnostic disclaimer, and Nudge FFS ±1. **Read-only otherwise — no approve/dismiss (§6).**
+5. **Reshoot prompt** — the `DATA_SUPPRESSED` path. Not an error dialog: a specific, actionable "the camera couldn't see the bowler clearly — here's what to fix" screen.
+6. **Add bowler** — minimal registration (name, dob, guardian consent), reachable from the selector. Needed because the consent gate 403s minors without consent on file, and there's no other way into the app's own flow.
+
+## 6. Operating model
+
+Decided 2026-09-12: the phone stays on the tripod and is operated by hand between deliveries — the coach walks to it, or **the bowler taps their own name before bowling**. No auto-record, no remote trigger, no second device.
+
+**Drill approve/dismiss is not in this app.** It belongs to the dashboard. That's the right split for its own reasons — the coach reviews prescriptions deliberately, not standing at a tripod mid-session — and it also removes a problem rather than gating one: `POST /api/v1/deliveries/{id}/action` writes `coach_actions.coach_id` from the signed-in coach's JWT, so a button reachable by whoever walks up to the phone could enter an approval attributed to the coach, forging the audit trail that column exists to establish (`BACKEND_PLAN.md` Milestone 7). With the surface absent, no gate, PIN, or mode-switching is needed anywhere in this app — don't add one later without revisiting this.
+
+Nudge FFS stays: it's a measurement correction, re-derivable and attributed to nobody, and it's only useful at the moment of capture.
+
+Because the app shows only the current delivery's verdict and no history, a bowler at the phone sees their own result and other players' names in the selector — nothing more. That's an acceptable exposure floor for a shared net-side device, and it holds only as long as history/browsing stays out of this app.
+
+**Mis-selection is the main attribution risk.** The backend resolves athlete identity from `session_id` (`BACKEND_PLAN.md` Milestone 8), so a bowler tapping the wrong name yields a delivery correctly scored against the *wrong person's* baseline — internally consistent, entirely wrong, and undetectable downstream. Hence the large name display in Milestone 1: make the error visible in the moment, not weeks later in a trend line.
+
+## 7. Data contract — two real gotchas
 
 The app must produce `raw_keypoints` matching `services/coaching-api/src/schemas/delivery.py` (`KeypointFrame`: `frame`, `t_ms`, and `knee`/`hip`/`ankle` plus optional `shoulder`/`wrist`, each `{x, y, conf}`). Mapping MediaPipe's output onto that is not a straight copy:
 
 - **Aspect-ratio distortion (correctness bug if missed).** MediaPipe returns normalized landmarks — `x` divided by frame *width*, `y` by frame *height*. The backend computes joint angles as the angle between vectors (knee→hip, knee→ankle). On a non-square frame those two normalizations have different scales, so a limb at a true 45° arrives as some other angle, and the backend has no way to detect it — it just returns a plausible, wrong number, which then gets compared against a baseline and flagged or not. **The app must convert to a uniform pixel space (multiply by actual frame width/height) before sending.** Add a test with a known synthetic geometry that asserts the round-trip angle, and check it against `angles.py`'s own geometry tests.
-- **Which leg is the "front" leg.** MediaPipe gives left *and* right landmarks (33 of them); the backend schema takes exactly one `knee`/`hip`/`ankle`. Front-foot strike is the *front* leg, which depends on the bowler's bowling arm and which side they're filmed from. Nothing in the current schema or the athletes table records bowling arm. Options: (a) add `bowling_arm` to the athlete profile (backend change), (b) let the coach pick side during setup, (c) infer from which ankle is further downfield at plant. (a) is the most robust and cheapest to reason about. **Needs a decision — §9.**
+- **Which leg is the "front" leg.** MediaPipe gives left *and* right landmarks (33 of them); the backend schema takes exactly one `knee`/`hip`/`ankle`. Front-foot strike is the *front* leg, which depends on the bowler's bowling arm and which side they're filmed from. Nothing in the current schema or the athletes table records bowling arm. Options: (a) add `bowling_arm` to the athlete profile (backend change), (b) let the coach pick side during setup, (c) infer from which ankle is further downfield at plant. (a) is the most robust and cheapest to reason about. **Needs a decision — §10.**
 - **Confidence semantics.** BlazePose exposes per-landmark `visibility` *and* `presence`; the backend's quality firewall thresholds a single `conf` at `< 0.70`. Which one maps to `conf` changes what gets suppressed, so pick deliberately and write it down — don't let it be an accident of whichever field the plugin happens to surface.
 
-## 7. Milestones
+## 8. Milestones
 
 ### Milestone 0 — Scaffold
 - [x] `apps/mobile/` Expo TypeScript project created (SDK 57)
@@ -92,17 +106,17 @@ The riskiest assumption in the whole plan, proven or disproven before UI work is
 - [ ] Camera permission flow
 - [ ] Alignment/stencil overlay for the PRD capture constraints (2.8–3.2m distance, 1.1m tripod height, roll/pitch <3°) — roll/pitch from device sensors (`expo-sensors`), distance and height are coach-entered or eyeballed against the stencil, not measurable by the phone
 - [ ] Best-effort format selection for fps/resolution, with the **actually-granted** values shown, never the requested ones
-- [ ] **Current-bowler selector + quick-switch.** One coach, one phone, several bowlers taking turns. The app always has an explicit "who's bowling now" — never inferred from the last recording — and switching is a single tap from the capture screen. Each switch calls `POST /api/v1/athletes/{id}/sessions` and uses the returned `session_id` for every delivery until the next switch. (`BACKEND_PLAN.md` Milestone 8 covers why: a stale `session_id` after a switch used to silently score against the wrong bowler's baseline. Athlete identity is now resolved server-side from `session_id`, so the app sending the right session is the *only* thing keeping attribution correct.)
+- [ ] **Bowler selector on the capture screen.** One phone, several bowlers taking turns; whoever is up taps their name before bowling. The app always has an explicit "who's bowling now" — never inferred from the last recording — and selecting is one tap without leaving the capture screen. Each selection calls `POST /api/v1/athletes/{id}/sessions` and uses the returned `session_id` for every delivery until the next change. Selected name rendered large (§6: mis-selection is silent and undetectable downstream). (`BACKEND_PLAN.md` Milestone 8 covers why: a stale `session_id` after a switch used to silently score against the wrong bowler's baseline. Athlete identity is now resolved server-side from `session_id`, so the app sending the right session is the *only* thing keeping attribution correct.)
 
 ### Milestone 2 — Extraction → contract
-- [ ] Landmarks for the recorded window mapped to `KeypointFrame`, including the pixel-space conversion and front-leg selection from §6
+- [ ] Landmarks for the recorded window mapped to `KeypointFrame`, including the pixel-space conversion and front-leg selection from §7
 - [ ] Raw video never written to persistent storage and never uploaded (PRD §10)
 - [ ] Unit test: synthetic known geometry → expected angle, cross-checked against the backend's own `angles.py` expectations
 
 ### Milestone 3 — Ingestion + verdict
 - [ ] `POST /api/v1/sessions/delivery` with the Supabase JWT attached
 - [ ] Verdict card rendering all four statuses, with the "why was this flagged?" disclosure
-- [ ] Nudge FFS ±1 (`POST /api/v1/deliveries/{id}/nudge-ffs`) and approve/dismiss (`POST /api/v1/deliveries/{id}/action`)
+- [ ] Nudge FFS ±1 (`POST /api/v1/deliveries/{id}/nudge-ffs`). **Not** `/action` — approve/dismiss is dashboard-only (§6)
 - [ ] Error mapping: 403 `ERR_CONSENT_REQUIRED` (unconsented minor), 422 `ERR_UNKNOWN_BASELINE` (no baseline confirmed yet — a likely first-run state, so it needs a real explanatory screen, not a raw error), 422 `ERR_THERMAL_THROTTLE`, 401 (re-auth)
 
 ### Milestone 4 — Field resilience
@@ -115,19 +129,20 @@ The riskiest assumption in the whole plan, proven or disproven before UI work is
 - [ ] Sunlight legibility check on real hardware outdoors (§4)
 - [ ] Device checklist: which phone, which Android version, dev-client APK installed, tripod, tape measure
 
-## 8. Backend dependencies (blocking, not yet built)
+## 9. Backend dependencies (blocking, not yet built)
 
 - **`GET /api/v1/athletes`** — list athletes for the bowler selector. Does not exist.
 - **`POST /api/v1/athletes`** — register a bowler, including `dob` and `guardian_consent` (the consent gate blocks minors without it, so registration must capture it or the app will hit 403s it can't resolve). Does not exist.
-- **`bowling_arm` on the athlete profile** — needed for front-leg selection (§6), pending the §9 decision.
+- **`bowling_arm` on the athlete profile** — needed for front-leg selection (§7), pending the §10 decision.
 - Baseline confirmation is a coach/dashboard workflow, but **a bowler with no confirmed baseline gets 422 on every delivery**. Either the app needs a path into baseline confirmation, or the demo flow must guarantee baselines exist first. Unresolved.
 
-## 9. Open decisions
+## 10. Open decisions
 
-1. **Who touches the phone, and when?** The phone sits on a tripod 2.8–3.2m from the bowler at 1.1m. The coach can't simultaneously be at the crease and behind the phone. Walk to the phone between deliveries (simple, slow), auto-record on detected motion (no touching, much harder, risks garbage captures), or a remote trigger/second device (extra hardware)? This shapes the entire capture UI and is the biggest open question.
-2. **Front-leg selection** — add `bowling_arm` to the athlete profile, ask during setup, or infer at plant? (§6)
+1. ~~**Who touches the phone, and when?**~~ **Resolved 2026-09-12**: manual at the tripod — the coach walks to it between deliveries, or the bowler taps their own name before bowling. One screen, selector on it, no auto-record, no remote trigger. Approve/dismiss moved to the dashboard as a consequence (§6).
+2. **Front-leg selection** — add `bowling_arm` to the athlete profile, ask during setup, or infer at plant? (§7)
 3. **Orientation** — capture is inherently landscape (side-on sagittal view); verdict/list screens read better portrait. Lock capture landscape and allow portrait elsewhere, or lock the app to one?
-4. **First-run baseline** — how does a brand-new bowler get past `ERR_UNKNOWN_BASELINE` without leaving the app? (§8)
+4. **First-run baseline** — how does a brand-new bowler get past `ERR_UNKNOWN_BASELINE` without leaving the app? (§9)
+5. ~~**Coach-mode gate mechanism**~~ **Dropped 2026-09-12** — moot once approve/dismiss moved to the dashboard. No modes, no gate, no PIN in this app (§6).
 
 ## Dead End Registry
 
