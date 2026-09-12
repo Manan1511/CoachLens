@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import {
   Camera,
@@ -7,7 +7,7 @@ import {
   useCameraPermission,
   useFrameProcessor,
 } from 'react-native-vision-camera';
-import { useRunOnJS } from 'react-native-worklets-core';
+import { useRunOnJS, useSharedValue } from 'react-native-worklets-core';
 
 /**
  * MOBILE_PLAN.md Milestone 0.5 — the capture spike, deliberately doing as
@@ -27,6 +27,13 @@ import { useRunOnJS } from 'react-native-worklets-core';
  * before this baseline is proven would make two unknowns indistinguishable
  * if something breaks - is it the plugin, or the frame-processor plumbing
  * itself? Get this working first, on a real device.
+ *
+ * VERIFIED on a real device (2026-09-12, Samsung A01/A015): both worklet
+ * runtimes coexist correctly in one Babel pass, the frame processor fires
+ * at the real camera rate, and achieved format is 3840x2160 @ 30fps on
+ * this hardware - notably not the 60/120fps the PRD wants, which this
+ * budget device may simply not support at any resolution. Worth checking
+ * on higher-end hardware before assuming 30fps is the general ceiling.
  */
 export function CaptureSpikeScreen() {
   const { hasPermission, requestPermission } = useCameraPermission();
@@ -47,25 +54,42 @@ export function CaptureSpikeScreen() {
   // runOnJS - the frame processor runs on VisionCamera's own worklet
   // context (powered by worklets-core), not Reanimated's.
   const reportFrame = useRunOnJS((width: number, height: number, fps: number) => {
+    console.log(`[fps-debug] achieved ${width}x${height} @ ${fps}fps`);
     setFrameSize({ width, height });
     setMeasuredFps(fps);
   }, []);
 
+  // Regression finding (2026-09-12, real device): a plain module-scope
+  // `let`/`const` array mutated inside this worklet did NOT persist across
+  // frame invocations - logcat showed the array length stuck at exactly 1
+  // on every single call despite frames genuinely arriving ~33ms apart
+  // (confirmed from frame.timestamp deltas). Whatever closure serialization
+  // this worklets-core version does for the frame processor, it does not
+  // treat an outer mutable array as a stable shared reference across calls.
+  // useSharedValue is worklets-core's actual supported mechanism for state
+  // that must survive across worklet invocations - use that, not a bare
+  // module-level variable, for anything mutated inside a frame processor.
+  const frameCount = useSharedValue(0);
+  const windowStartMs = useSharedValue(0);
+
   const frameProcessor = useFrameProcessor(
     (frame) => {
       'worklet';
-      // Rolling fps over a 1-second window, computed from frame
-      // timestamps rather than a naive per-frame counter - a naive
-      // counter would just report however often this worklet gets
-      // scheduled, not the camera's actual delivery rate.
-      const now = frame.timestamp;
-      _frameTimestampsMs.push(now / 1_000_000);
-      while (_frameTimestampsMs.length > 0 && now / 1_000_000 - _frameTimestampsMs[0] > 1000) {
-        _frameTimestampsMs.shift();
+      const nowMs = frame.timestamp / 1_000_000;
+      if (windowStartMs.value === 0) {
+        windowStartMs.value = nowMs;
       }
-      reportFrame(frame.width, frame.height, _frameTimestampsMs.length);
+      frameCount.value += 1;
+
+      const elapsedMs = nowMs - windowStartMs.value;
+      if (elapsedMs >= 1000) {
+        const fps = Math.round((frameCount.value / elapsedMs) * 1000);
+        reportFrame(frame.width, frame.height, fps);
+        frameCount.value = 0;
+        windowStartMs.value = nowMs;
+      }
     },
-    [reportFrame],
+    [reportFrame, frameCount, windowStartMs],
   );
 
   const requestedFormat = useMemo(
@@ -110,11 +134,6 @@ export function CaptureSpikeScreen() {
     </View>
   );
 }
-
-// Module-level scratch array for the worklet's rolling fps window. Deliberately
-// not a React ref/state - this is mutated on the frame-processor thread on
-// every frame, and must never touch the JS thread except through reportFrame.
-const _frameTimestampsMs: number[] = [];
 
 const styles = StyleSheet.create({
   container: {
