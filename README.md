@@ -4,6 +4,15 @@ AI-assisted quantitative 2D biomechanical review assistant for fast bowling stri
 
 > CoachLens is a **quantitative coaching tool**, not a medical/injury diagnostic system. Keep that boundary in mind when naming code, fields, and UI copy (see PRD §1).
 
+## Live Deployment (Backend API)
+
+The backend is deployed and live on Render:
+- **Base API URL:** `https://coachlens-xvh3.onrender.com`
+- **Interactive Swagger Docs:** [https://coachlens-xvh3.onrender.com/docs](https://coachlens-xvh3.onrender.com/docs)
+- **Health Check:** [https://coachlens-xvh3.onrender.com/health](https://coachlens-xvh3.onrender.com/health) (`{"status": "ok"}`)
+- **OpenAPI Schema:** [https://coachlens-xvh3.onrender.com/openapi.json](https://coachlens-xvh3.onrender.com/openapi.json)
+
+
 ## Architecture at a glance
 
 The system is a decoupled tri-layer pipeline (PRD §4):
