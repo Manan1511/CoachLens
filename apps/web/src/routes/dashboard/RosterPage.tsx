@@ -31,7 +31,7 @@ export function RosterPage() {
   const { data: rows, loading, error } = useAsync(loadRoster, []);
 
   return (
-    <div>
+    <div className="mx-auto max-w-[42rem]">
       <h1 className="mb-xs text-h2">Roster</h1>
       <p className="mb-lg text-ink-secondary">Athletes across your sessions.</p>
 

@@ -12,6 +12,7 @@ const STATUS_COLOR: Record<DeliveryStatus, string> = {
   MECHANICAL_WATCH: 'var(--color-status-yellow)',
   TECHNICAL_CONCERN: 'var(--color-status-red)',
   DATA_SUPPRESSED: 'var(--color-ink-muted)',
+  BENCHMARK_PENDING: 'var(--color-ink-muted)',
 };
 
 const WIDTH = 600;

@@ -3,13 +3,19 @@ import { ActionBar } from '@/components/dashboard/ActionBar';
 import { EvidenceDisclosure } from '@/components/dashboard/EvidenceDisclosure';
 import { NudgeFfsControl } from '@/components/dashboard/NudgeFfsControl';
 import { VerdictCard } from '@/components/dashboard/VerdictCard';
+import { WhatsAppExport } from '@/components/dashboard/WhatsAppExport';
 import { api } from '@/lib/api/client';
 import { useAsync } from '@/hooks/useAsync';
 import type { CoachActionType, CoachingReport } from '@/lib/api/types';
 
+interface DeliveryAction {
+  action: CoachActionType;
+  note: string | null;
+}
+
 async function loadReport(
   deliveryId: string,
-): Promise<{ report: CoachingReport; actioned: CoachActionType | null } | null> {
+): Promise<{ report: CoachingReport; actioned: DeliveryAction | null } | null> {
   const [report, actioned] = await Promise.all([
     api.getReport(deliveryId),
     api.getDeliveryAction(deliveryId),
@@ -29,7 +35,7 @@ export function DeliveryReportPage() {
   const isSuppressed = verdict.status === 'DATA_SUPPRESSED';
 
   return (
-    <div>
+    <div className="mx-auto max-w-[42rem]">
       <Link to="/app" className="mb-md inline-block text-small text-ink-dim hover:text-ink">
         ← Roster
       </Link>
@@ -65,10 +71,13 @@ export function DeliveryReportPage() {
           <ActionBar
             deliveryId={report.delivery_id}
             action={proposed_action}
-            actioned={actioned}
+            actioned={actioned?.action ?? null}
+            actionNote={actioned?.note ?? null}
             onActioned={reload}
           />
         )}
+
+        <WhatsAppExport deliveryId={report.delivery_id} />
       </div>
     </div>
   );

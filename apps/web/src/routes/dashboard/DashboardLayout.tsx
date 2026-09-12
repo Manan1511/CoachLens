@@ -55,7 +55,9 @@ export function DashboardLayout() {
         </nav>
       </header>
 
-      <main className="mx-auto max-w-[42rem] px-md pt-24 pb-2xl sm:px-0 sm:pt-28">
+      {/* No max-width here — pages set their own, since the athlete page
+          needs a wider three-column layout than the roster/report pages. */}
+      <main className="px-md pt-24 pb-2xl sm:pt-28">
         <Outlet />
       </main>
     </div>

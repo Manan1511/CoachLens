@@ -23,18 +23,6 @@ export function medianAndIqr(values: number[]): { median: number; iqr: number } 
   return { median, iqr: q3 - q1 };
 }
 
-export function ageFromDob(dob: string | null): number | null {
-  if (!dob) return null;
-  const birth = new Date(dob);
-  const now = new Date();
-  let age = now.getFullYear() - birth.getFullYear();
-  const hasHadBirthdayThisYear =
-    now.getMonth() > birth.getMonth() ||
-    (now.getMonth() === birth.getMonth() && now.getDate() >= birth.getDate());
-  if (!hasHadBirthdayThisYear) age -= 1;
-  return age;
-}
-
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
     year: 'numeric',

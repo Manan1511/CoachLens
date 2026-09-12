@@ -9,7 +9,9 @@ const GENDER_LABEL: Record<Athlete['gender'], string> = {
 
 /** Gender and bowling arm, shown as quiet inline facts rather than another
  *  pair of coloured badges — this is demographic/technique context, not a
- *  status. Mock-only fields; see the comment on Athlete in lib/api/types.ts. */
+ *  status. `bowling_arm` is a real column now (RIGHT/LEFT, nullable for
+ *  athletes created before the migration); `gender` is still mock-only —
+ *  see the comment on Athlete in lib/api/types.ts. */
 export function AthleteMeta({ gender, bowling_arm }: Pick<Athlete, 'gender' | 'bowling_arm'>) {
   return (
     <div className="flex items-center gap-md text-small text-ink-secondary">
@@ -19,7 +21,7 @@ export function AthleteMeta({ gender, bowling_arm }: Pick<Athlete, 'gender' | 'b
       </span>
       <span className="flex items-center gap-1.5">
         <HandIcon className="size-4 text-ink-dim" />
-        {bowling_arm === 'left' ? 'Left-arm' : 'Right-arm'}
+        {bowling_arm === 'LEFT' ? 'Left-arm' : bowling_arm === 'RIGHT' ? 'Right-arm' : 'Arm unset'}
       </span>
     </div>
   );

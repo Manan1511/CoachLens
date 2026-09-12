@@ -1,6 +1,7 @@
 import type {
   Athlete,
   BaselineRecord,
+  BowlingArm,
   CoachActionType,
   CoachingReport,
   DeliveryStatus,
@@ -13,38 +14,82 @@ import type {
  *  fetch calls can share the exact same view types. Mutated in place by
  *  handlers.ts — this is a mock database, not fixture constants. */
 
-export const ATHLETES: Athlete[] = [
+/** The raw "row" shape, including fields the real AthleteSummary response
+ *  deliberately never returns (dob) — mirrors athletes.py's own split
+ *  between the DB row and the API-facing AthleteSummary it's reduced to. */
+interface AthleteRow {
+  id: string;
+  name: string;
+  dob: string | null;
+  guardian_consent: boolean;
+  bowling_arm: BowlingArm | null;
+  /** Mock-only — see the comment on Athlete.gender in lib/api/types.ts. */
+  gender: 'male' | 'female' | 'other';
+}
+
+const MINOR_AGE_CUTOFF = 18;
+
+/** Mirrors coaching/consent.py's is_consent_blocked exactly: dob absent ->
+ *  not blocked (can't determine minor status, and defaulting to blocked
+ *  would lock out adults with no dob on file), otherwise minor + no
+ *  guardian consent -> blocked. */
+function isConsentBlocked(dob: string | null, guardianConsent: boolean): boolean {
+  if (!dob) return false;
+  const birth = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const hadBirthdayThisYear =
+    today.getMonth() > birth.getMonth() ||
+    (today.getMonth() === birth.getMonth() && today.getDate() >= birth.getDate());
+  if (!hadBirthdayThisYear) age -= 1;
+  return age < MINOR_AGE_CUTOFF && !guardianConsent;
+}
+
+/** Mirrors repository.py's _athlete_summary — reduces a row to exactly what
+ *  GET /api/v1/athletes returns (no dob) plus the mock-only `gender`. */
+export function toAthleteSummary(row: AthleteRow): Athlete {
+  return {
+    id: row.id,
+    name: row.name,
+    bowling_arm: row.bowling_arm,
+    guardian_consent: row.guardian_consent,
+    consent_blocked: isConsentBlocked(row.dob, row.guardian_consent),
+    gender: row.gender,
+  };
+}
+
+export const ATHLETE_ROWS: AthleteRow[] = [
   {
     id: 'ATH-001',
     name: 'Arjun Mehta',
     dob: '2010-03-14',
     guardian_consent: true,
+    bowling_arm: 'RIGHT',
     gender: 'male',
-    bowling_arm: 'right',
   },
   {
     id: 'ATH-002',
     name: 'Priya Nair',
     dob: '2007-11-02',
     guardian_consent: false,
+    bowling_arm: 'LEFT',
     gender: 'female',
-    bowling_arm: 'left',
   },
   {
     id: 'ATH-003',
     name: 'Rohan Iyer',
     dob: '2002-06-21',
     guardian_consent: true,
+    bowling_arm: 'RIGHT',
     gender: 'male',
-    bowling_arm: 'right',
   },
   {
     id: 'ATH-004',
     name: 'Kabir Sethi',
     dob: '2011-01-30',
     guardian_consent: true,
+    bowling_arm: 'LEFT',
     gender: 'other',
-    bowling_arm: 'left',
   },
 ];
 
@@ -99,6 +144,7 @@ const SUMMARIES: Record<DeliveryStatus, string> = {
   MECHANICAL_WATCH: 'Isolated deviation flagged for replay review.',
   TECHNICAL_CONCERN: 'Persistent deviation from baseline mechanics detected.',
   DATA_SUPPRESSED: 'Landmark visibility below threshold at the FFS frame.',
+  BENCHMARK_PENDING: 'Measured, not yet scored — no confirmed baseline for this athlete.',
 };
 
 export const SESSIONS: MockSession[] = [
@@ -120,6 +166,11 @@ export const DELIVERIES: MockDelivery[] = [
   { id: 'DLV-006', session_id: 'SES-005', athlete_id: 'ATH-002', created_at: '2026-09-01T14:10:00Z' },
   { id: 'DLV-007', session_id: 'SES-006', athlete_id: 'ATH-003', created_at: '2026-09-05T11:00:00Z' },
   { id: 'DLV-008', session_id: 'SES-007', athlete_id: 'ATH-004', created_at: '2026-08-15T16:30:00Z' },
+  // A short spell (SES-006) with rising trunk tilt across four balls —
+  // the fixture behind the within-spell fatigue chart.
+  { id: 'DLV-009', session_id: 'SES-006', athlete_id: 'ATH-003', created_at: '2026-09-05T11:04:00Z' },
+  { id: 'DLV-010', session_id: 'SES-006', athlete_id: 'ATH-003', created_at: '2026-09-05T11:08:00Z' },
+  { id: 'DLV-011', session_id: 'SES-006', athlete_id: 'ATH-003', created_at: '2026-09-05T11:12:00Z' },
 ];
 
 export const VERDICTS: MockVerdict[] = [
@@ -247,20 +298,20 @@ export const VERDICTS: MockVerdict[] = [
     id: 'VER-007',
     delivery_id: 'DLV-007',
     metric: 'front_knee_angle_deg',
-    status: 'TECHNICAL_CONCERN',
-    window_pattern: '3_OF_5_MATCHED',
-    window_matches: 4,
-    delta_deg: 7.1,
+    status: 'FORM_BENCHMARK',
+    window_pattern: 'NOT_APPLICABLE',
+    window_matches: 0,
+    delta_deg: 1.8,
     uncertainty_band_deg: 3.2,
-    summary: SUMMARIES.TECHNICAL_CONCERN,
+    summary: SUMMARIES.FORM_BENCHMARK,
     event_frame: 135,
-    observed_value_deg: 181.3,
+    observed_value_deg: 176.0,
     confidence: 0.95,
-    trigger_deltas: [6.2, 5.8, 6.9, 7.1],
+    trigger_deltas: null,
     filtered: true,
     trunk_tilt_deg: 28.4,
     trunk_tilt_confidence: 0.92,
-    drill_id: 'DRL-SNC-012',
+    drill_id: null,
     created_at: '2026-09-05T11:00:06Z',
   },
   {
@@ -282,6 +333,70 @@ export const VERDICTS: MockVerdict[] = [
     trunk_tilt_confidence: 0.89,
     drill_id: null,
     created_at: '2026-08-15T16:30:05Z',
+  },
+  // The rest of Rohan's SES-006 spell: trunk tilt creeps up ball-by-ball
+  // (28.4 -> 29.6 -> 30.9 -> 32.5) while front-knee delta stays mild until
+  // the last ball, matching the PRD's "fatigue shows up as trunk-tilt
+  // drift before anything else" framing.
+  {
+    id: 'VER-009',
+    delivery_id: 'DLV-009',
+    metric: 'front_knee_angle_deg',
+    status: 'FORM_BENCHMARK',
+    window_pattern: 'NOT_APPLICABLE',
+    window_matches: 0,
+    delta_deg: 2.4,
+    uncertainty_band_deg: 3.2,
+    summary: SUMMARIES.FORM_BENCHMARK,
+    event_frame: 136,
+    observed_value_deg: 176.6,
+    confidence: 0.94,
+    trigger_deltas: null,
+    filtered: true,
+    trunk_tilt_deg: 29.6,
+    trunk_tilt_confidence: 0.91,
+    drill_id: null,
+    created_at: '2026-09-05T11:04:05Z',
+  },
+  {
+    id: 'VER-010',
+    delivery_id: 'DLV-010',
+    metric: 'front_knee_angle_deg',
+    status: 'MECHANICAL_WATCH',
+    window_pattern: 'ISOLATED',
+    window_matches: 1,
+    delta_deg: 5.1,
+    uncertainty_band_deg: 3.2,
+    summary: SUMMARIES.MECHANICAL_WATCH,
+    event_frame: 134,
+    observed_value_deg: 179.3,
+    confidence: 0.9,
+    trigger_deltas: [5.1],
+    filtered: true,
+    trunk_tilt_deg: 30.9,
+    trunk_tilt_confidence: 0.88,
+    drill_id: null,
+    created_at: '2026-09-05T11:08:05Z',
+  },
+  {
+    id: 'VER-011',
+    delivery_id: 'DLV-011',
+    metric: 'front_knee_angle_deg',
+    status: 'TECHNICAL_CONCERN',
+    window_pattern: '3_OF_5_MATCHED',
+    window_matches: 3,
+    delta_deg: 7.1,
+    uncertainty_band_deg: 3.2,
+    summary: SUMMARIES.TECHNICAL_CONCERN,
+    event_frame: 133,
+    observed_value_deg: 181.3,
+    confidence: 0.95,
+    trigger_deltas: [5.1, 6.2, 7.1],
+    filtered: true,
+    trunk_tilt_deg: 32.5,
+    trunk_tilt_confidence: 0.86,
+    drill_id: 'DRL-SNC-012',
+    created_at: '2026-09-05T11:12:05Z',
   },
 ];
 
@@ -340,7 +455,7 @@ export function nextId(prefix: string, existing: { id: string }[]): string {
 
 export function toReport(verdict: MockVerdict): CoachingReport {
   const baseline =
-    verdict.status !== 'DATA_SUPPRESSED'
+    verdict.status !== 'DATA_SUPPRESSED' && verdict.status !== 'BENCHMARK_PENDING'
       ? BASELINES.find(
           (b) =>
             b.athlete_id === DELIVERIES.find((d) => d.id === verdict.delivery_id)?.athlete_id &&

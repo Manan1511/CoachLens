@@ -7,17 +7,22 @@ import type {
   CoachActionType,
   CoachingReport,
   SessionSummary,
+  WhatsAppExportResult,
 } from './types';
 
-/** The dashboard's only door to the backend. Every function today calls the
- *  in-memory mock (lib/api/mock/) because services/coaching-api has no
- *  list-athletes, no session-list, and no action-readback endpoint yet, and
- *  it's a moving target owned by someone else on the team right now.
+/** The dashboard's only door to the backend. `listAthletes`/`getAthlete`
+ *  mirror the real GET /api/v1/athletes now, and `exportWhatsapp` mirrors
+ *  the real GET .../export/whatsapp — both call the in-memory mock only
+ *  because it's a moving target owned by someone else on the team right
+ *  now, not because the endpoints don't exist. `getAthleteHistory` and
+ *  `getDeliveryAction` still stand in for real gaps (session-list and
+ *  action-readback) — see the per-function notes below and in
+ *  lib/api/mock/handlers.ts.
  *
- *  When those endpoints exist, each function body below becomes a `fetch`
- *  against `/api/v1/...` with the coach's Supabase bearer token — the
- *  signatures and the types in ./types.ts already match the real contract,
- *  so no caller in routes/ or components/ needs to change. */
+ *  When it's time to point this at the real API, each function body below
+ *  becomes a `fetch` against `/api/v1/...` with the coach's Supabase bearer
+ *  token — the signatures and the types in ./types.ts already match the
+ *  real contract, so no caller in routes/ or components/ needs to change. */
 
 export const api = {
   listAthletes: (): Promise<Athlete[]> => mock.listAthletes(),
@@ -31,7 +36,9 @@ export const api = {
 
   /** Mock-only — see the docstring on mock/handlers.ts's getDeliveryAction.
    *  Has no real endpoint to swap to yet. */
-  getDeliveryAction: (deliveryId: string): Promise<CoachActionType | null> =>
+  getDeliveryAction: (
+    deliveryId: string,
+  ): Promise<{ action: CoachActionType; note: string | null } | null> =>
     mock.getDeliveryAction(deliveryId),
 
   getBaseline: (athleteId: string, metric: string): Promise<BaselineRecord | null> =>
@@ -55,4 +62,7 @@ export const api = {
 
   nudgeFfs: (deliveryId: string, frameDelta: number): Promise<CoachingReport> =>
     mock.nudgeFfs(deliveryId, frameDelta),
+
+  exportWhatsapp: (deliveryId: string): Promise<WhatsAppExportResult | null> =>
+    mock.exportWhatsapp(deliveryId),
 };

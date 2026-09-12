@@ -29,4 +29,9 @@ export const VERDICT_COPY: Record<
     tone: 'muted',
     helper: "The camera view wasn't clear enough to measure this delivery.",
   },
+  BENCHMARK_PENDING: {
+    label: 'Not yet scored',
+    tone: 'muted',
+    helper: "Measured, but this athlete has no confirmed baseline to compare it against yet.",
+  },
 };

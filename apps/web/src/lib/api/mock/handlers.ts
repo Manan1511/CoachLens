@@ -7,16 +7,18 @@ import type {
   CoachingReport,
   DeliverySummary,
   SessionSummary,
+  WhatsAppExportResult,
 } from '../types';
 
 import {
-  ATHLETES,
+  ATHLETE_ROWS,
   BASELINES,
   COACH_ACTIONS,
   DELIVERIES,
   SESSIONS,
   VERDICTS,
   nextId,
+  toAthleteSummary,
   toReport,
 } from './data';
 
@@ -29,39 +31,53 @@ function latestVerdictFor(deliveryId: string) {
   return rows.length > 0 ? rows[rows.length - 1] : undefined;
 }
 
-function actionFor(verdictId: string): CoachActionType | null {
-  const action = COACH_ACTIONS.filter((a) => a.verdict_id === verdictId).pop();
-  return action?.action ?? null;
+function latestActionFor(verdictId: string) {
+  return COACH_ACTIONS.filter((a) => a.verdict_id === verdictId).pop() ?? null;
 }
 
+/** Real endpoint: GET /api/v1/athletes (src/coaching/routes/athletes.py) —
+ *  name-ordered, not scoped to the requesting coach (the real `athletes`
+ *  table has no coach/club ownership column yet — a known multi-tenancy
+ *  gap, not something to paper over here). */
 export async function listAthletes(): Promise<Athlete[]> {
-  return ATHLETES;
+  return [...ATHLETE_ROWS].sort((a, b) => a.name.localeCompare(b.name)).map(toAthleteSummary);
 }
 
 export async function getAthlete(athleteId: string): Promise<Athlete | null> {
-  return ATHLETES.find((a) => a.id === athleteId) ?? null;
+  const row = ATHLETE_ROWS.find((a) => a.id === athleteId);
+  return row ? toAthleteSummary(row) : null;
 }
 
 /** Real endpoint: GET /api/v1/athletes/{id}/history — untyped nested
- *  sessions→deliveries→verdicts in production. Reshaped here into the
- *  typed SessionSummary/DeliverySummary view so the dashboard never
- *  touches the raw nested shape directly. */
+ *  sessions→deliveries→verdicts in production, whose current select
+ *  (repository.get_athlete_history) only asks for `status, delta_deg,
+ *  created_at`. `confidence`, the two raw kinematic values, and the
+ *  coach-action fields below are NOT in that real response yet — see the
+ *  comments on DeliverySummary in lib/api/types.ts for which of these are
+ *  "real column, not-yet-selected" versus genuinely mock-only. */
 export async function getAthleteHistory(athleteId: string): Promise<SessionSummary[]> {
   const sessions = SESSIONS.filter((s) => s.athlete_id === athleteId).sort((a, b) =>
     b.session_date.localeCompare(a.session_date),
   );
 
   return sessions.map((session) => {
-    const deliveries = DELIVERIES.filter((d) => d.session_id === session.id);
+    const deliveries = DELIVERIES.filter((d) => d.session_id === session.id).sort((a, b) =>
+      a.created_at.localeCompare(b.created_at),
+    );
     const summaries: DeliverySummary[] = deliveries.map((delivery) => {
       const verdict = latestVerdictFor(delivery.id);
+      const action = verdict ? latestActionFor(verdict.id) : null;
       return {
         id: delivery.id,
         session_id: delivery.session_id,
         created_at: delivery.created_at,
         latest_status: verdict?.status ?? null,
         delta_deg: verdict?.delta_deg ?? null,
-        actioned: verdict ? actionFor(verdict.id) : null,
+        confidence: verdict?.confidence ?? null,
+        observed_knee_angle_deg: verdict?.observed_value_deg ?? null,
+        trunk_tilt_deg: verdict?.trunk_tilt_deg ?? null,
+        actioned: action?.action ?? null,
+        action_note: action?.note ?? null,
       };
     });
 
@@ -80,13 +96,16 @@ export async function getReport(deliveryId: string): Promise<CoachingReport | nu
 }
 
 /** Mock-only convenience — the real API has no action-readback endpoint at
- *  all (see the plan's "what's missing" research), so a real dashboard
- *  can't yet show "already actioned" after a page reload either. Kept here,
- *  clearly separate from getReport, so the gap isn't hidden by pretending
- *  it's part of the real report shape. */
-export async function getDeliveryAction(deliveryId: string): Promise<CoachActionType | null> {
+ *  all, so a real dashboard can't yet show "already actioned" after a page
+ *  reload either. Kept here, clearly separate from getReport, so the gap
+ *  isn't hidden by pretending it's part of the real report shape. */
+export async function getDeliveryAction(
+  deliveryId: string,
+): Promise<{ action: CoachActionType; note: string | null } | null> {
   const verdict = latestVerdictFor(deliveryId);
-  return verdict ? actionFor(verdict.id) : null;
+  if (!verdict) return null;
+  const action = latestActionFor(verdict.id);
+  return action ? { action: action.action, note: action.note } : null;
 }
 
 export async function getBaseline(
@@ -123,10 +142,12 @@ export async function confirmBaseline(
   return { athlete_id: athleteId, metric, confirmed: true, confirmed_by: confirmedBy };
 }
 
-/** Real endpoint: POST /api/v1/deliveries/{id}/action. The backend accepts
- *  APPROVE/DISMISS and returns an untyped ack with no way to read the
- *  decision back later — this mock keeps a COACH_ACTIONS log so the
- *  dashboard can show "already actioned", which the real API can't yet. */
+/** Real endpoint: POST /api/v1/deliveries/{id}/action. `note` is a real
+ *  field on the real request (coaching/schemas/action.py's
+ *  CoachActionRequest) — there's just been no UI collecting one until now.
+ *  The backend returns an untyped ack with no way to read the decision
+ *  back later; this mock keeps a COACH_ACTIONS log so the dashboard can
+ *  show "already actioned" (and its note), which the real API can't yet. */
 export async function postCoachAction(
   deliveryId: string,
   action: CoachActionType,
@@ -171,4 +192,60 @@ export async function nudgeFfs(deliveryId: string, frameDelta: number): Promise<
   };
   VERDICTS.push(nudged);
   return toReport(nudged);
+}
+
+const STATUS_DISPLAY: Record<string, string> = {
+  DATA_SUPPRESSED: 'DATA SUPPRESSED',
+  FORM_BENCHMARK: 'FORM BENCHMARK',
+  MECHANICAL_WATCH: 'MECHANICAL WATCH',
+  TECHNICAL_CONCERN: 'TECHNICAL CONCERN',
+  BENCHMARK_PENDING: 'BENCHMARK PENDING',
+};
+
+/** Real endpoint: GET /api/v1/reports/{id}/export/whatsapp
+ *  (coaching/export.py's format_whatsapp_card). Reproduces its structure —
+ *  status, kinematics, baseline delta, drill, disclaimer — closely enough
+ *  to preview the real feature, not a byte-for-byte match of its emoji
+ *  formatting. */
+export async function exportWhatsapp(deliveryId: string): Promise<WhatsAppExportResult | null> {
+  const report = await getReport(deliveryId);
+  if (!report) return null;
+
+  const { verdict, kinematics: k, baselines: b, proposed_action } = report;
+  const lines: string[] = ['CoachLens Biomechanical Review', `Delivery: ${report.delivery_id}`];
+
+  lines.push(`Status: ${STATUS_DISPLAY[verdict.status]}`, `- ${verdict.summary}`);
+
+  if (verdict.status !== 'DATA_SUPPRESSED') {
+    lines.push('');
+    if (k.ffs_frame !== null) lines.push(`Kinematics at FFS (Frame ${k.ffs_frame}):`);
+    if (k.front_knee_angle_deg !== null)
+      lines.push(`- Front Knee Angle: ${k.front_knee_angle_deg.toFixed(1)}°`);
+    if (k.forward_trunk_tilt_deg !== null)
+      lines.push(`- Forward Trunk Tilt: ${k.forward_trunk_tilt_deg.toFixed(1)}°`);
+    if (b.fixed_reference_median_deg !== null && b.fixed_reference_iqr_deg !== null)
+      lines.push(
+        `- Baseline Reference: ${b.fixed_reference_median_deg.toFixed(1)}° (±${b.fixed_reference_iqr_deg.toFixed(1)}° IQR)`,
+      );
+    if (b.delta_deg !== null)
+      lines.push(`- Baseline Delta: ${b.delta_deg > 0 ? '+' : ''}${b.delta_deg.toFixed(1)}°`);
+  }
+
+  if (proposed_action) {
+    lines.push('', 'Recommended Drill:', `${proposed_action.title} (${proposed_action.drill_id})`);
+    lines.push(`- Protocol: ${proposed_action.prescription}`);
+    lines.push(`- Standard: ${proposed_action.credential}`);
+    if (proposed_action.contraindications.length > 0) {
+      lines.push(`- Contraindications: ${proposed_action.contraindications.join(', ')}`);
+    }
+  }
+
+  lines.push('', `Note: ${verdict.clinical_disclaimer}`);
+
+  return {
+    delivery_id: report.delivery_id,
+    report_id: report.report_id,
+    status: verdict.status,
+    formatted_text: lines.join('\n'),
+  };
 }
