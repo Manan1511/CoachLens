@@ -9,6 +9,10 @@ from datetime import UTC, datetime
 
 from src.coaching import repository
 from src.coaching.consent import MINOR_AGE_CUTOFF, is_consent_blocked
+from src.coaching.drill_selector import (
+    DRILL_KNEE_COLLAPSE_ISOMETRIC,
+    select_corrective_drill,
+)
 from src.interpretation.angles import forward_trunk_tilt_deg, front_knee_angle_deg
 from src.interpretation.baseline import evaluate_delivery_deviation
 from src.measurement.audit import audit_frame_pacing
@@ -29,11 +33,8 @@ _STATUS_SUMMARIES = {
     DeliveryStatus.BENCHMARK_PENDING: "Measured, not yet scored - no confirmed baseline for this athlete.",
 }
 
-# Only assigned when a delivery is flagged TECHNICAL_CONCERN for the knee
-# metric. Real drill selection (matching deviation type to a drill library)
-# is out of scope for Stage 1 - this is the one seeded drill (see
-# scripts/seed.py) matching the PRD §7.2 example.
-TECHNICAL_CONCERN_DRILL_ID = "DRL-SNC-012"
+# Default / backward-compatible drill ID for front knee collapse (DRL-SNC-012)
+TECHNICAL_CONCERN_DRILL_ID = DRILL_KNEE_COLLAPSE_ISOMETRIC
 
 
 class ConsentRequiredError(Exception):
@@ -176,7 +177,12 @@ def _score(
         rolling_history_deltas=history,
     )
 
-    drill_id = TECHNICAL_CONCERN_DRILL_ID if deviation.status == DeliveryStatus.TECHNICAL_CONCERN else None
+    drill_id = select_corrective_drill(
+        status=deviation.status,
+        metric=FRONT_KNEE_METRIC,
+        delta_deg=deviation.delta_deg,
+        trunk_tilt_deg=kinematics.forward_trunk_tilt_deg,
+    )
 
     return _Scored(
         kinematics=kinematics,
